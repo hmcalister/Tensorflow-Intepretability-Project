@@ -14,17 +14,20 @@ import tensorflow as tf
 # Inputs to network as well as input / output limits
 # Note limits are not really used/enforced anywhere (outside animation graphing)
 # But are useful for documenting expected behavior
-independant_variables = 1
+independent_variables = 5
 model_input_shape = (5,)
-input_lim = (-1, 1)
-y_lim = (-1,1)
+x_lim = (-1,1)
+y_lim = None
+
+# Function to define how to map independent variables to model inputs
+input_data_fn = lambda x: x
 
 # Functions to model in sequential tasks
 # Notice that for a data_fn like lambda x:...
 # x is a *list* of inputs! Even if that list is one element
 data_fns = [
-    lambda x: np.sin(3*x[0]),
-    lambda x: np.cos(3*x[0])
+    lambda x: np.sum(x),
+    lambda x: np.sum(x[:3]) - np.sum(x[3:])
 ]
 
 # base model for sequential tasks
@@ -32,6 +35,7 @@ data_fns = [
 # i.e. these weights are *shared*
 base_model = tf.keras.models.Sequential([
     tf.keras.layers.Input(shape=model_input_shape),
+    tf.keras.layers.Dense(10, activation="relu"),
     tf.keras.layers.Dense(10, activation="relu"),
 ])
 
@@ -59,12 +63,6 @@ train_batches = 256
 validation_batches = 16
 items_per_epoch = batch_size * train_batches
 
-# Some basic constants to be used throughout the script
-def powers_set(x): return np.array([x[0]**i for i in range(1, model_input_shape[0]+1)])
-
-# Function to define how to map independant variables to model inputs
-input_data_fn = powers_set
-
 
 # -----------------------------------------------------------------------------
 # AUTOMATED SETUP: DON'T TOUCH BELOW HERE UNLESS CONFIDENT
@@ -73,10 +71,10 @@ input_data_fn = powers_set
 def data_generator(task_index, max_samples):
     i = 0
     while i < max_samples:
-        x = np.random.uniform(input_lim[0], input_lim[1], independant_variables)
+        x = np.random.uniform(x_lim[0], x_lim[1], independent_variables)
         y = data_fns[task_index](x)
         # Return a number of powers of x
-        yield powers_set(x), y
+        yield input_data_fn(x), y
         i += 1
 
 # Create, compile, and build all models
@@ -133,7 +131,7 @@ for task_index in range(len(data_fns)):
         validation_steps_per_epoch = validation_batches,
         input_data_fn = input_data_fn,
         data_fn = data_fns[task_index],
-        x_lim = input_lim,
+        x_lim = x_lim,
         y_lim = y_lim
     ))
 

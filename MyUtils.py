@@ -7,6 +7,10 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+# Get the set of all powers of x like so [x**1, x**2, x**3,...]
+def powers_set(max_power):
+    return lambda x: np.array([x[0]**i for i in range(1, max_power[0]+1)])
+
 def plotHistory(history, keys: dict, title=None, xlabel=None, ylabel=None, yscale="linear"):
     """
     Plot the history of a model's training.
