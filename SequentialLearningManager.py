@@ -72,6 +72,7 @@ class SequentialLearningManager():
         """
 
         self.base_model:tf.keras.models.Model = base_model
+        self.base_model_layers: List[tf.keras.layers.Layer] = [l for l in base_model.layers]
         self.tasks: List[SequentialTask] = tasks
         self.EWC_terms: List[EWC_Term] = []
         self.training_histories: List[tf.keras.callbacks.History] = []
@@ -105,23 +106,35 @@ class SequentialLearningManager():
 
         current_task = self.tasks[self._current_task_index]
 
-        # Create Loss function for next task
-        base_loss_function = current_task.model_base_loss
-        def EWC_loss(y_true, y_pred):
-            loss = base_loss_function(y_true, y_pred)
-            for ewc_term in self.EWC_terms:
-                loss += ewc_term.create_loss(self.base_model)
-            return loss
-
         # Recompile model to use new loss
         # Note we keep the metrics!
-        current_task.compile_model(EWC_loss)
+        base_loss_function = current_task.model_base_loss
+        current_task.compile_model(EWC_Loss(base_loss_function, self.base_model_layers, self.EWC_terms))
+
+        sign_flip_callback = SignFlippingTracker(self.base_model)
 
         # Train model, store history
         history = current_task.train_on_task(epochs=self.epochs[self._current_task_index],
-                                          callbacks=[self.validation_callback])
-
+                                          callbacks=[self.validation_callback, sign_flip_callback])
         self.training_histories.append(history)
+
+        # Create an EWC term for the now completed task
+        weights = []
+        omega = []
+        for layer_index, layer in enumerate(self.base_model_layers):
+            current_layer = []
+            omega_current_layer = []
+            for weight_index, weight in enumerate(layer.weights):
+                current_layer.append(weight)
+                omega_current_layer.append(tf.ones_like(weight))
+            weights.append(current_layer)
+            omega.append(omega_current_layer)
+        self.EWC_terms.append(EWC_Term(
+            lam=1,
+            optimal_weights=weights,
+            omega_matrix=omega
+        ))
+            
         self._current_task_index += 1
 
     def plot_task_training_histories(self):
