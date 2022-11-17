@@ -5,7 +5,7 @@ from MyUtils import *
 from MyCallbacks import *
 import os
 from SequentialLearningManager import SequentialLearningManager
-from SequentialTask import SequentialTask
+from SequentialTask import *
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
@@ -27,17 +27,15 @@ input_data_fn = lambda x: x
 # x is a *list* of inputs! Even if that list is one element
 data_fns = [
     lambda x: np.sum(x),
-    lambda x: np.sum(x[:3]) - np.sum(x[3:])
+    lambda x: np.sum(np.sin(3*x))
 ]
 
 # base model for sequential tasks
 # each model gets these layers as a base, then adds own head layers
 # i.e. these weights are *shared*
-base_model = tf.keras.models.Sequential([
-    tf.keras.layers.Input(shape=model_input_shape),
-    tf.keras.layers.Dense(10, activation="relu"),
-    tf.keras.layers.Dense(10, activation="relu"),
-])
+base_model_inputs = tf.keras.Input(shape=model_input_shape)
+base_model_layer = tf.keras.layers.Dense(10, activation="relu")(base_model_inputs)
+base_model = tf.keras.Model(inputs=base_model_inputs, outputs=base_model_layer, name="base_model")
 
 # Layers specific to each task
 # Not shared
@@ -57,25 +55,18 @@ loss_fn = tf.keras.losses.MeanSquaredError()
 loss_fn.name = "base_loss"
 
 # Training parameters
-epochs = 10
-batch_size = 32
-train_batches = 256
-validation_batches = 16
-items_per_epoch = batch_size * train_batches
+epochs = 5
+batch_size = 64
+training_batches = 128
+validation_batches = 32
+items_per_epoch = batch_size * training_batches
 
+print(f"BASE MODEL SUMMARY")
+base_model.summary()
 
 # -----------------------------------------------------------------------------
 # AUTOMATED SETUP: DON'T TOUCH BELOW HERE UNLESS CONFIDENT
 # -----------------------------------------------------------------------------
-
-def data_generator(task_index, max_samples):
-    i = 0
-    while i < max_samples:
-        x = np.random.uniform(x_lim[0], x_lim[1], independent_variables)
-        y = data_fns[task_index](x)
-        # Return a number of powers of x
-        yield input_data_fn(x), y
-        i += 1
 
 # Create, compile, and build all models
 models = []
@@ -85,54 +76,29 @@ for task_index in range(len(data_fns)):
     else:
         layers = task_head_layers[task_index]
 
-    # Use splat operator to expand list into sequential arguement
-    model = tf.keras.models.Sequential([
-        base_model,
-        *layers
-    ])
+    curr_model_layer = base_model_layer
+    for layer in layers:
+        curr_model_layer = layer(curr_model_layer)
     
-    models.append(model)
-
-
-def create_train_dataset(task_index):
-    return tf.data.Dataset.from_generator(
-        data_generator,
-        args=[task_index, batch_size*train_batches],
-        output_signature=(
-            tf.TensorSpec(shape=model_input_shape, dtype=tf.float64),
-            tf.TensorSpec(shape=(), dtype=tf.float64),
-        )).batch(batch_size).repeat()
-
-
-def create_validation_dataset(task_index):
-    return tf.data.Dataset.from_generator(
-        data_generator,
-        args=[task_index, batch_size*validation_batches],
-        output_signature=(
-            tf.TensorSpec(shape=model_input_shape, dtype=tf.float64),
-            tf.TensorSpec(shape=(), dtype=tf.float64),
-        )).batch(batch_size).repeat()
-
+    curr_model = tf.keras.Model(inputs=base_model_inputs, outputs=curr_model_layer, name=f"task_{task_index}_model")
+    models.append(curr_model)
 
 # Create the task representations (see SequentialTask)
 tasks = []
 for task_index in range(len(data_fns)):
-    # Create a test and validation dataset for the task (notice reliance on task index allows different datasets)
-    train_dataset = create_train_dataset(task_index)
-    validation_dataset = create_validation_dataset(task_index)
-
-    tasks.append(SequentialTask(
+    tasks.append(FunctionApproximationTask(
         name=f"Task {task_index+1}",
         model=models[task_index],
         model_base_loss=loss_fn,
-        training_data = train_dataset,
-        train_steps_per_epoch = train_batches,
-        validation_data = validation_dataset,
-        validation_steps_per_epoch = validation_batches,
+        independent_variables=independent_variables,
+        model_input_shape=model_input_shape,
         input_data_fn = input_data_fn,
         data_fn = data_fns[task_index],
+        training_batches = training_batches,
+        validation_batches = validation_batches,
+        batch_size=batch_size,
         x_lim = x_lim,
-        y_lim = y_lim
+        y_lim = y_lim,
     ))
 
 
