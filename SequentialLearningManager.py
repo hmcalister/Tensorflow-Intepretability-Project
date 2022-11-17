@@ -53,7 +53,7 @@ class SequentialLearningManager():
                     self.validation_results[k] = [v]
             print(f"FINISHED VALIDATION\n")
 
-    def __init__(self, base_model: tf.keras.models.Sequential,
+    def __init__(self, base_model: tf.keras.models.Model,
                  tasks: List[SequentialTask],
                  epochs: Union[int, List[int]],
                  EWC_method=None):
@@ -61,26 +61,28 @@ class SequentialLearningManager():
         Create a new SequentialLearningManager
 
         Parameters:
-            base_model: tf.keras.models.Sequential
+            base_model: tf.keras.models.Model
                 The base model (or more accurately, a model with all shared weights)
             tasks: List(SequentialTask):
                 The list of tasks to learn on (ordered in a list).
                 See SequentialTask class for more details
             EWC_method:
-                Method to calculate elastic weight consolidation importances
+                Method to calculate elastic weight consolidation importance's
                 Presence also adds EWC term to subsequent loss functions
         """
 
-        self.base_model:tf.keras.models.Sequential = base_model
+        self.base_model:tf.keras.models.Model = base_model
         self.tasks: List[SequentialTask] = tasks
-        self.EWC_terms: List[EWCTerm] = []
+        self.EWC_terms: List[EWC_Term] = []
         self.training_histories: List[tf.keras.callbacks.History] = []
         self._current_task_index: int = 0
 
         self.validation_callback = \
             SequentialLearningManager.SequentialValidationCallback(tasks)
 
-        self.epochs = epochs
+        # We're doing a little hack here so type hinting is thrown off
+        # After this block, epochs is type List[int]
+        self.epochs = epochs  # type: ignore
         if isinstance(epochs, int):
             self.epochs: List[int] = [epochs for _ in range(len(self.tasks))]
 
@@ -123,23 +125,29 @@ class SequentialLearningManager():
         self._current_task_index += 1
 
     def plot_task_training_histories(self):
-        multiplotData(self.training_histories)
+        multiplot_data(self.training_histories)
 
-    def plot_validation_callback_data(self, key:str, title=None, ylabel=None):
+    def plot_validation_callback_data(self, key:str, title: str="", ylabel: str=""):
         """
         Plot the data from the validation callback
         Possible keys are any metric name or 'loss', e.g.
         key is in the set {"loss", "base_loss"} 
         """
 
-        plt.plot(self.validation_callback.validation_results[key], marker='o')
+        data = self.validation_callback.validation_results[key]
+        marker=None
+        markersize=5
+        if len(data) < 100:
+            marker = 'o'
+
+        plt.plot(data, marker=marker, markersize=markersize)
         plt.title(title)
         plt.xlabel("Epochs")
         plt.ylabel(ylabel)
         plt.legend([t.name for t in self.tasks])
-        task_boundaries = np.cumsum(self.epochs)
-        plt.vlines(task_boundaries, colors="k",
-            ymin=np.min(self.validation_callback.validation_results[key]),
-            ymax=np.max(self.validation_callback.validation_results[key]),
+        task_boundaries = np.cumsum(self.epochs)-1
+        plt.vlines(task_boundaries, colors="k",  # type: ignore
+            ymin=np.min(data),
+            ymax=np.max(data),  # type: ignore
             linestyles="dashed", alpha=0.5)
         plt.show()
