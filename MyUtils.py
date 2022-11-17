@@ -117,7 +117,7 @@ def plotFunctionCombinedInputs(model,
         plt.legend()
     plt.show()
 
-def multiplotData(data, xlabels: List = None):
+def multiplot_data(data, xlabels: List = None):
     fig = plt.figure(1)
     total_cols = int(len(data)**0.5)
     total_rows = len(data) // total_cols
