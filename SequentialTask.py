@@ -92,7 +92,7 @@ class SequentialTask:
         # this is not possible with a compiled graph (Tensorflow restricts it)
         # So we must set run_eagerly to True to avoid compilation, or
         # we can use .weights and use tensorflow Tensors instead!
-        self.model.compile(optimizer='adam',
+        self.model.compile(optimizer='ADAM',
                 loss=loss_fn,
                 metrics=[self.model_base_loss],
                 run_eagerly=False)
@@ -224,7 +224,6 @@ class FunctionApproximationTask(SequentialTask):
         while i < max_samples:
             x = np.random.uniform(self.x_lim[0], self.x_lim[1], self.independent_variables)
             y = self.data_fn(x)
-            # Return a number of powers of x
             yield self.input_data_fn(x), y
             i += 1
 
