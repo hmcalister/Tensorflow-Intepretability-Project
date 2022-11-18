@@ -8,10 +8,10 @@ import tensorflow as tf
 # fmt: on
 
 # Get the set of all powers of x like so [x**1, x**2, x**3,...]
-def powers_set(max_power):
-    return lambda x: np.array([x[0]**i for i in range(1, max_power[0]+1)])
+def powers_set(max_power: int):
+    return lambda x: np.array([x[0]**i for i in range(1, max_power+1)])
 
-def plotHistory(history, keys: dict, title=None, xlabel=None, ylabel=None, yscale="linear"):
+def plot_history(history, keys: dict, title:str="", xlabel:str="", ylabel:str="", yscale:str="linear"):
     """
     Plot the history of a model's training.
 
@@ -36,7 +36,7 @@ def plotHistory(history, keys: dict, title=None, xlabel=None, ylabel=None, yscal
         plt.xlabel(xlabel)
     if ylabel is not None:
         plt.ylabel(ylabel)
-    plt.yscale(yscale)
+    plt.yscale(yscale)  # type: ignore
     plt.legend(legend, loc='upper right')
     plt.show()
 
@@ -117,7 +117,7 @@ def plotFunctionCombinedInputs(model,
         plt.legend()
     plt.show()
 
-def multiplot_data(data, xlabels: List = None):
+def multiplot_data(data, xlabels: List = []):
     fig = plt.figure(1)
     total_cols = int(len(data)**0.5)
     total_rows = len(data) // total_cols
@@ -144,7 +144,7 @@ def multiplot_data(data, xlabels: List = None):
         if isinstance(curr_data, list):
             ax.plot(curr_data)
         
-        if xlabels != None:
+        if len(xlabels) > i-1:
             ax.set_xlabel(xlabels[i-1])
 
     fig.tight_layout()
