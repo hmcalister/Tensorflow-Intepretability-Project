@@ -51,12 +51,12 @@ class SequentialLearningManager():
                     self.validation_results[k].append(v)
                 else:
                     self.validation_results[k] = [v]
-            print(f"FINISHED VALIDATION\n")
+            print(f"FINISHED VALIDATION")
 
     def __init__(self, base_model: tf.keras.models.Model,
                  tasks: List[SequentialTask],
                  epochs: Union[int, List[int]],
-                 EWC_method=None):
+                 EWC_method: EWC_Method = EWC_Method.NONE):
         """
         Create a new SequentialLearningManager
 
@@ -77,6 +77,7 @@ class SequentialLearningManager():
         self.EWC_terms: List[EWC_Term] = []
         self.training_histories: List[tf.keras.callbacks.History] = []
         self._current_task_index: int = 0
+        self.EWC_term_creator = EWC_Term_Creator(EWC_method, base_model, tasks)
 
         self.validation_callback = \
             SequentialLearningManager.SequentialValidationCallback(tasks)
@@ -111,30 +112,13 @@ class SequentialLearningManager():
         base_loss_function = current_task.model_base_loss
         current_task.compile_model(EWC_Loss(base_loss_function, self.base_model_layers, self.EWC_terms))
 
-        sign_flip_callback = SignFlippingTracker(self.base_model)
-
         # Train model, store history
         history = current_task.train_on_task(epochs=self.epochs[self._current_task_index],
-                                          callbacks=[self.validation_callback, sign_flip_callback])
+                                          callbacks=[self.validation_callback, *self.EWC_term_creator.callback_dict.values()])
         self.training_histories.append(history)
 
         # Create an EWC term for the now completed task
-        weights = []
-        omega = []
-        for layer_index, layer in enumerate(self.base_model_layers):
-            current_layer = []
-            omega_current_layer = []
-            for weight_index, weight in enumerate(layer.weights):
-                current_layer.append(weight)
-                omega_current_layer.append(tf.ones_like(weight))
-            weights.append(current_layer)
-            omega.append(omega_current_layer)
-        self.EWC_terms.append(EWC_Term(
-            lam=1,
-            optimal_weights=weights,
-            omega_matrix=omega
-        ))
-            
+        self.EWC_terms.append(self.EWC_term_creator.create_term(lam=1))
         self._current_task_index += 1
 
     def plot_task_training_histories(self):
