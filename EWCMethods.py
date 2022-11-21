@@ -40,7 +40,7 @@ class WeightTrackingCallback(tf.keras.callbacks.Callback):
         #
         # In particular, it appears that whatever model is "in use" overwrites 
         # any references to the previous model.
-        # For application, that means base_model (with, say, 2 layers) has 
+        # For our application, that means base_model (with, say, 2 layers) has 
         # 2 layers at init time, but that same reference will now point to
         # new_model (with, say, 4 layers) at callback time! For this reason,
         # A work around is to store a direct list of references to the model
@@ -120,40 +120,74 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
     """
 
     def __init__(self, tasks: List[SequentialTask]):
+    def __init__(self, tasks: List[SequentialTask], samples: int=-1):
+        """
+        Create a new fisher information callback - creating a new fisher information matrix
+        at the end of each task
+
+        Note! This callback will track gradients for the ENTIRE network,
+        not only the "shared" section. See the EWC_Term class for why this is not a problem
+
+        Parameters:
+            tasks: A list of sequential tasks 
+            samples: The number of samples to take from the training data to construct the matrix
+                Defaults to -1, meaning take the entire dataset
+        """
         super().__init__()
-        self.tasks = tasks
-        self.current_task_index = 0
-        self.fisher_matrix = []
+        self.tasks: List[SequentialTask] = tasks
+        self.current_task_index: int = 0
+        self.samples: int = samples
+        self.fisher_matrices: List[List[List[tf.Tensor]]] = []
 
     def on_train_end(self, logs=None):
         # Do fisher calculation
+        print(f"{'-'*80}")
+        print("STARTING FISHER CALCULATION")
 
         current_task = self.tasks[self.current_task_index]
+        samples = self.samples if self.samples!=-1 else current_task.training_batches
 
+        # Notice for this section we work with flattened arrays until the end (for speed)
         # init variance to be a zero matrix like all weight tensors of task model
-        variance: List[List[tf.Variable]] = []
-        for layer_index, layer in enumerate(current_task.model.weights):
-            current_layer = []
-            for tensor_index, tensor in enumerate(layer):
-                current_layer.append(tf.zeros_like(tensor))
-            variance.append(current_layer)
+        variance = [tf.zeros_like(tensor) for tensor in current_task.model.weights]
+        # Noting gradients, apply model to samples
+        step = 0
+        # Each loop we get the gradients for a new sample
+        # And update the variance to account for the new sample
+        for x, _ in current_task.training_data.take(samples):
+            outputs = []
+            # Track the gradient over the log likelihood
+            with tf.GradientTape() as tape:
+                outputs = current_task.model(x)
+                log_likelihood = tf.math.log(outputs)
+            # Finally actually take the gradient and update the variance accordingly
+            gradients = tape.gradient(log_likelihood, current_task.model.weights)
+            variance = [var + (grad ** 2) for var, grad in zip(variance, gradients)]
 
-        # Noting gradients, apply model to entire dataset
-        with tf.GradientTape() as tape:
-            outputs = current_task.model(current_task.training_data)
-            log_likelihood = tf.math.log(outputs)
-        gradients = tape.gradient(log_likelihood, current_task.model.weights)
-        
-        variance = [var + (grad ** 2) for var, grad in zip(variance, gradients)]
+            # Show the current step to keep user updated
+            print(f"STEP: {step:05}/{samples:05}", end='\r')
+            step+=1
+        # Finally - Fisher matrix is found by variance divided by number of samples
+        fisher_diagonal = [tensor / samples for tensor in variance]
+
+        # Now we can stop working with flat arrays and convert to layer-collected format
+        # But first, convert with these ugly loops
+        current_fisher = []
+        index = 0
+        for layer_index, layer in enumerate(current_task.model.layers):
+            current_layer = []
+            for tensor_index, tensor in enumerate(layer.weights):
+                current_layer.append(deepcopy(fisher_diagonal[index]))
+                index += 1
+            current_fisher.append(current_layer)
+        self.fisher_matrices.append(current_fisher)
+
+        print("FINISHED FISHER CALCULATION")
+        print(f"{'-'*80}")
 
         # Move to next task
         self.current_task_index += 1
 
-class EWC_Method(Enum):
-    NONE = 1,
-    WEIGHT_DECAY = 2
-    SIGN_FLIPPING = 3
-    FISHER_MATRIX = 4
 
 
 class EWC_Term():
