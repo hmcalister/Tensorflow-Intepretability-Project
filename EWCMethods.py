@@ -15,6 +15,7 @@ class EWC_Method(Enum):
     WEIGHT_DECAY = 2
     SIGN_FLIPPING = 3
     FISHER_MATRIX = 4
+
 class WeightTrackingCallback(tf.keras.callbacks.Callback):
     """
     A callback to track weights during training.
@@ -312,7 +313,7 @@ class EWC_Term_Creator():
                     omega_matrix.append(omega_layer)
                 return EWC_Term(lam=lam,optimal_weights=model_current_weights, omega_matrix=omega_matrix)
             
-            # case EWC_Method.FISHER_MATRIX:
+            case EWC_Method.FISHER_MATRIX:
                 # Calculate Fisher matrix and use as omega
                 # To do this, need to run model over training dataset
                 # And use this to approximate Fisher.
@@ -320,6 +321,9 @@ class EWC_Term_Creator():
                 # Details here: https://towardsdatascience.com/an-intuitive-look-at-fisher-information-2720c40867d8
                 # Example implementation: https://github.com/db434/EWC/blob/master/ewc.py
                 # Original paper: https://arxiv.org/pdf/1612.00796.pdf
+                fisher_calculation_callback: FisherInformationMatrixCalculator = self.callback_dict["FisherCalc"]  # type: ignore
+                omega_matrix = fisher_calculation_callback.fisher_matrices[-1]
+                return EWC_Term(lam=lam,optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
 
             # Default case: return an empty term
             case _:
