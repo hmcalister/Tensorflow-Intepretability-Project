@@ -10,6 +10,11 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+class EWC_Method(Enum):
+    NONE = 1,
+    WEIGHT_DECAY = 2
+    SIGN_FLIPPING = 3
+    FISHER_MATRIX = 4
 class WeightTrackingCallback(tf.keras.callbacks.Callback):
     """
     A callback to track weights during training.
