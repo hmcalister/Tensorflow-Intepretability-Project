@@ -119,7 +119,6 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
     This class probably doesn't need to be a callback, but it also doesn't hurt if it's needed
     """
 
-    def __init__(self, tasks: List[SequentialTask]):
     def __init__(self, tasks: List[SequentialTask], samples: int=-1):
         """
         Create a new fisher information callback - creating a new fisher information matrix
@@ -188,9 +187,17 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         # Move to next task
         self.current_task_index += 1
 
-
-
 class EWC_Term():
+    """
+    Representation of a single EWC_Term
+    Collects together all EWC term ideas (lambda, optimal weights, omega...)
+    Also exposes loss function for use
+
+    Note the loss function only loops over the OPTIMAL weights given
+    So if a larger omega matrix is given (e.g. Fisher over all weights) this is okay!
+    The extra omega matrix is ignored
+    """
+
 
     def __init__(self,
                  lam: float,
@@ -221,6 +228,9 @@ class EWC_Term():
     def calculate_loss(self, model_layers: List[tf.keras.layers.Layer]):
         loss = 0
         for layer_index, layer in enumerate(model_layers):
+            # Note in zip function - if omega is longer than optimal weights the excess omega is ignored
+            # This may be an issue if omega and optimal weights are not in the same "position" of the network
+            # TODO: Make EWC work better in the case of non-start of network shared weights...
             for omega, optimal, new in zip(self.omega_matrix[layer_index], self.optimal_weights[layer_index], layer.weights):
                 loss += tf.reduce_sum(omega * tf.math.square(new-optimal))
         return loss * self.lam/2
