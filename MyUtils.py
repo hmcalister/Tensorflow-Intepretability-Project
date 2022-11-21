@@ -38,6 +38,7 @@ def plot_history(history, keys: dict, title:str="", xlabel:str="", ylabel:str=""
         plt.ylabel(ylabel)
     plt.yscale(yscale)  # type: ignore
     plt.legend(legend, loc='upper right')
+    plt.tight_layout()
     plt.show()
 
 
@@ -118,7 +119,7 @@ def plotFunctionCombinedInputs(model,
     plt.show()
 
 def multiplot_data(data, xlabels: List = []):
-    fig = plt.figure(1)
+    fig = plt.figure(1, figsize=(16,8))
     total_cols = int(len(data)**0.5)
     total_rows = len(data) // total_cols
     if len(data) % total_cols != 0: total_rows += 1
