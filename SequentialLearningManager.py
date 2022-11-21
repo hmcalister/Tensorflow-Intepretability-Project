@@ -109,8 +109,9 @@ class SequentialLearningManager():
 
         # Recompile model to use new loss
         # Note we keep the metrics!
-        base_loss_function = current_task.model_base_loss
-        current_task.compile_model(EWC_Loss(base_loss_function, self.base_model_layers, self.EWC_terms))
+        for task in self.tasks:
+            base_loss_function = task.model_base_loss
+            task.compile_model(EWC_Loss(base_loss_function, self.base_model_layers, self.EWC_terms))
 
         # Train model, store history
         history = current_task.train_on_task(epochs=self.epochs[self._current_task_index],
