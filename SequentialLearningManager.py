@@ -137,6 +137,7 @@ class SequentialLearningManager():
         if len(data) < 100:
             marker = 'o'
 
+        fig = plt.figure(figsize=(12,8))
         plt.plot(data, marker=marker, markersize=markersize)
         plt.title(title)
         plt.xlabel("Epochs")
@@ -147,4 +148,5 @@ class SequentialLearningManager():
             ymin=np.min(data),
             ymax=np.max(data),  # type: ignore
             linestyles="dashed", alpha=0.5)
+        plt.tight_layout()
         plt.show()
