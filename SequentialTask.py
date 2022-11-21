@@ -123,6 +123,7 @@ class SequentialTask:
             
         # Return type of this is hinted incorrectly
         # Actual return type is dict
+        print(f"EVALUATING: {self.model.name}")
         return self.model.evaluate(self.validation_data, 
             steps=self.validation_batches, return_dict=True)  # type: ignore
 
@@ -215,9 +216,9 @@ class FunctionApproximationTask(SequentialTask):
             **kwargs)
 
         # Set typing correctly
-        self.x_lim: Tuple[float, float] = self.x_lim
-        self.input_data_fn: Callable = self.input_data_fn
-        self.data_fn: Callable = self.data_fn
+        self.x_lim: Tuple[float, float]
+        self.input_data_fn: Callable
+        self.data_fn: Callable
 
     def data_generator(self, max_samples):
         i = 0
