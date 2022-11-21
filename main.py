@@ -21,27 +21,25 @@ x_lim = (-1, 1)
 y_lim = None
 
 # Function to define how to map independent variables to model inputs
-
-
-def input_data_fn(x): return x
+input_data_fn = lambda x: x
 
 
 # Functions to model in sequential tasks
 # Notice that for a data_fn like lambda x:...
 # x is a *list* of inputs! Even if that list is one element
 data_fns = [
-    lambda x: np.sum(np.sin(3*x)),
-    lambda x: np.sum(np.cos(3*x)),
-    lambda x: np.sum(np.sinc(3*x))
+    lambda x: np.sum(np.sin(2*x)),
+    lambda x: np.sum(np.tanh(3*x)),
+    lambda x: np.sum(np.tan(1*x))
 ]
 
 # base model for sequential tasks
 # each model gets these layers as a base, then adds own head layers
 # i.e. these weights are *shared*
-base_model_inputs = tf.keras.Input(shape=model_input_shape)
-base_model_layer = tf.keras.layers.Dense(32, activation="relu")(base_model_inputs)
+base_model_inputs = base_model_layer = tf.keras.Input(shape=model_input_shape)
+base_model_layer = tf.keras.layers.Dense(64, activation="relu")(base_model_layer)
 base_model_layer = tf.keras.layers.Dense(32, activation="relu")(base_model_layer)
-base_model_layer = tf.keras.layers.Dense(16, activation="relu")(base_model_layer)
+base_model_layer = tf.keras.layers.Dense(32, activation="relu")(base_model_layer)
 # base_model_layer = tf.keras.layers.Dense(1)(base_model_layer)
 base_model = tf.keras.Model(inputs=base_model_inputs, outputs=base_model_layer, name="base_model")
 
@@ -71,7 +69,7 @@ batch_size = 64
 training_batches = 256
 validation_batches = 64
 items_per_epoch = batch_size * training_batches
-ewc_method = EWC_Method.SIGN_FLIPPING
+ewc_method = EWC_Method.FISHER_MATRIX
 
 
 print(f"BASE MODEL SUMMARY")
@@ -94,7 +92,7 @@ for task_index in range(len(data_fns)):
         curr_model_layer = layer(curr_model_layer)
 
     curr_model = tf.keras.Model(
-        inputs=base_model_inputs, outputs=curr_model_layer, name=f"task_{task_index}_model")
+        inputs=base_model_inputs, outputs=curr_model_layer, name=f"task_{task_index+1}_model")
     models.append(curr_model)
 
 # Create the task representations (see SequentialTask)
@@ -122,7 +120,7 @@ manager = SequentialLearningManager(base_model, tasks, epochs, ewc_method)
 manager.train_all()
 # Plot output data
 manager.plot_validation_callback_data(
-    "loss", title="Task EWC Losses Over All Epochs", ylabel="EWC Loss")
+    "loss", title="Task Total Loss Over All Epochs", ylabel="Total Loss")
 manager.plot_validation_callback_data(
     "base_loss", title="Task Base Losses Over All Epochs", ylabel="Base Loss")
 manager.plot_task_training_histories()
