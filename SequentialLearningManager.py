@@ -1,5 +1,6 @@
 # fmt: off
 from typing import List, Union
+import typing
 import numpy as np
 import matplotlib.pyplot as plt
 from SequentialTask import SequentialTask
@@ -56,7 +57,8 @@ class SequentialLearningManager():
     def __init__(self, base_model: tf.keras.models.Model,
                  tasks: List[SequentialTask],
                  epochs: Union[int, List[int]],
-                 EWC_method: EWC_Method = EWC_Method.NONE):
+                 EWC_method: EWC_Method = EWC_Method.NONE,
+                 log_file_path="logs/Manager.log"):
         """
         Create a new SequentialLearningManager
 
@@ -69,6 +71,9 @@ class SequentialLearningManager():
             EWC_method:
                 Method to calculate elastic weight consolidation importance's
                 Presence also adds EWC term to subsequent loss functions
+            log_file_path: String
+                The path to the log file to be used
+                Defaults to logs/Manager.log
         """
 
         self.base_model:tf.keras.models.Model = base_model
@@ -88,6 +93,8 @@ class SequentialLearningManager():
         if isinstance(epochs, int):
             self.epochs: List[int] = [epochs for _ in range(len(self.tasks))]
 
+        self._log_file:typing.TextIO = open(log_file_path, "wt")
+
     def train_all(self):
         """
         Train all tasks, sequentially
@@ -106,6 +113,18 @@ class SequentialLearningManager():
             return None
 
         current_task = self.tasks[self._current_task_index]
+
+        # Quick log of all EWC weights 
+        self.log_to_file(f"{'='*80}")
+        self.log_to_file(f"TASK {self._current_task_index}")
+        for term_index, ewc_term in enumerate(self.EWC_terms):
+                self.log_to_file(f"{'-'*80}")
+                self.log_to_file(f"TERM {term_index}")
+                for layer_index, layer in enumerate(ewc_term.optimal_weights):
+                    self.log_to_file(f"LAYER {layer_index}")
+                    for tensor in layer:
+                        self.log_to_file(f"{tensor}")
+        self.log_to_file(f"{'='*80}")
 
         # Recompile model to use new loss
         # Note we keep the metrics!
@@ -151,3 +170,16 @@ class SequentialLearningManager():
             linestyles="dashed", alpha=0.5)
         plt.tight_layout()
         plt.show()
+
+    def log_to_file(self, log_string: typing.Any):
+        """
+        A quick and overly simple logging function to dump something to a file
+        Separates something potentially interesting from screens of TF logs
+
+        Parameters:
+            log_string: str
+                The string to append to the log file
+        """
+
+        self._log_file.write(log_string)
+        self._log_file.write("\n")
