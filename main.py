@@ -12,25 +12,15 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-# Inputs to network as well as input / output limits
-# Note y_lim is not used/enforced anywhere (outside animation graphing)
-# But are useful for documenting expected behavior
-independent_variables = 5
-model_input_shape = (5,)
-x_lim = (-1, 1)
-y_lim = None
+model_input_shape = (2,)
 
-# Function to define how to map independent variables to model inputs
-input_data_fn = lambda x: x
-
-
-# Functions to model in sequential tasks
-# Notice that for a data_fn like lambda x:...
-# x is a *list* of inputs! Even if that list is one element
-data_fns = [
-    lambda x: np.sum(np.sin(2*x)),
-    lambda x: np.sum(np.tanh(3*x)),
-    lambda x: np.sum(np.tan(1*x))
+# Feature names of iris dataset
+# Each new list will produce a new task with those labels as features
+# Possible labels are ['sepallength', 'sepalwidth', 'petallength', 'petalwidth']
+task_feature_names = [
+    ['sepallength', 'petallength'],
+    ['sepalwidth', 'petalwidth'],
+    ['petalwidth', 'sepallength'],
 ]
 
 # base model for sequential tasks
@@ -47,29 +37,25 @@ base_model = tf.keras.Model(inputs=base_model_inputs, outputs=base_model_layer, 
 # Not shared
 task_head_layers = [
     [
-        tf.keras.layers.Dense(1)
+        tf.keras.layers.Dense(3)
     ],
     [
-        tf.keras.layers.Dense(1)
+        tf.keras.layers.Dense(3)
     ],
     [
-        tf.keras.layers.Dense(1)
+        tf.keras.layers.Dense(3)
     ]
 ]
 
 # The base loss function for tasks
 # Currently all tasks have the same structure so only one loss
 # Could use a list in future
-loss_fn = tf.keras.losses.MeanSquaredError()
+loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 loss_fn.name = "base_loss"
 
 # Training parameters
 epochs = 50
-batch_size = 64
-training_batches = 256
-validation_batches = 64
-items_per_epoch = batch_size * training_batches
-ewc_method = EWC_Method.FISHER_MATRIX
+ewc_method = EWC_Method.NONE
 
 
 print(f"BASE MODEL SUMMARY")
@@ -81,7 +67,7 @@ base_model.summary()
 
 # Create, compile, and build all models
 models = []
-for task_index in range(len(data_fns)):
+for task_index in range(len(task_feature_names)):
     if task_index >= len(task_head_layers):
         layers = []
     else:
@@ -97,20 +83,12 @@ for task_index in range(len(data_fns)):
 
 # Create the task representations (see SequentialTask)
 tasks = []
-for task_index in range(len(data_fns)):
-    tasks.append(FunctionApproximationTask(
+for task_index in range(len(task_feature_names)):
+    tasks.append(IrisClassificationTask(
         name=f"Task {task_index+1}",
         model=models[task_index],
         model_base_loss=loss_fn,
-        independent_variables=independent_variables,
-        model_input_shape=model_input_shape,
-        input_data_fn=input_data_fn,
-        data_fn=data_fns[task_index],
-        training_batches=training_batches,
-        validation_batches=validation_batches,
-        batch_size=batch_size,
-        x_lim=x_lim,
-        y_lim=y_lim,
+        feature_column_names=task_feature_names[task_index],
     ))
 
 
