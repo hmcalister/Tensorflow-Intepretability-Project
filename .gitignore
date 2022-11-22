@@ -1,3 +1,5 @@
+datasets/
 images/
+logs/
 __pycache__
 .vscode
