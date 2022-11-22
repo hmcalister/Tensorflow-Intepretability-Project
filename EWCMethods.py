@@ -154,7 +154,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         step = 0
         # Each loop we get the gradients for a new sample
         # And update the variance to account for the new sample
-        for x, _ in current_task.training_data.take(samples):
+        for x, _ in current_task.training_dataset.take(samples):
             outputs = []
             # Track the gradient over the log likelihood
             with tf.GradientTape() as tape:

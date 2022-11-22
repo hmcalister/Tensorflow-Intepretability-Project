@@ -17,10 +17,11 @@ class SequentialTask:
             name: str,
             model: tf.keras.models.Model,
             model_base_loss: tf.keras.losses.Loss,
-            training_data: tf.data.Dataset,
+            training_dataset: tf.data.Dataset,
             training_batches: int,
-            validation_data: Union[tf.data.Dataset, None] = None,
+            validation_dataset: Union[tf.data.Dataset, None] = None,
             validation_batches: int = 0,
+            batch_size: int = 0,
             input_data_fn: Union[Callable, None] = None,
             data_fn: Union[Callable, None] = None,
             x_lim: Union[Tuple[float, float], None] = None,
@@ -70,10 +71,11 @@ class SequentialTask:
         self.name = name
         self.model = model
         self.model_base_loss = model_base_loss
-        self.training_data = training_data
+        self.training_dataset = training_dataset
         self.training_batches = training_batches
-        self.validation_data = validation_data
+        self.validation_dataset = validation_dataset
         self.validation_batches = validation_batches
+        self.batch_size = batch_size
         self.input_data_fn = input_data_fn
         self.data_fn = data_fn
         self.x_lim = x_lim
@@ -105,10 +107,10 @@ class SequentialTask:
         """
 
         return self.model.fit(
-            self.training_data,
+            self.training_dataset,
             epochs=epochs,
             steps_per_epoch=self.training_batches,
-            validation_data=self.validation_data,
+            validation_data=self.validation_dataset,
             validation_steps=self.validation_batches,
             callbacks=callbacks
         )
@@ -118,13 +120,13 @@ class SequentialTask:
         Run a single pass over the validation data, returning the metrics
         """
 
-        if self.validation_data is None:
+        if self.validation_dataset is None:
             return {}
             
         # Return type of this is hinted incorrectly
         # Actual return type is dict
         print(f"EVALUATING: {self.model.name}")
-        return self.model.evaluate(self.validation_data, 
+        return self.model.evaluate(self.validation_dataset, 
             steps=self.validation_batches, return_dict=True)  # type: ignore
 
 
@@ -208,9 +210,9 @@ class FunctionApproximationTask(SequentialTask):
             model_base_loss = model_base_loss,
             input_data_fn = input_data_fn,
             data_fn = data_fn,
-            training_data=self.create_dataset(training_batches * batch_size),
+            training_dataset=self.create_dataset(training_batches * batch_size),
             training_batches = training_batches,
-            validation_data=self.create_dataset(validation_batches * batch_size),
+            validation_dataset=self.create_dataset(validation_batches * batch_size),
             validation_batches = validation_batches,
             x_lim = x_lim,
             **kwargs)
@@ -236,3 +238,4 @@ class FunctionApproximationTask(SequentialTask):
                 tf.TensorSpec(shape=self.model_input_shape, dtype=tf.float64),  # type: ignore
                 tf.TensorSpec(shape=(), dtype=tf.float64),  # type: ignore
             )).batch(self.batch_size).repeat()
+
