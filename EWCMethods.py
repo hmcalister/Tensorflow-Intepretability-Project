@@ -201,14 +201,14 @@ class EWC_Term():
 
 
     def __init__(self,
-                 lam: float,
+                 ewc_lambda: float,
                  optimal_weights: List[List[np.ndarray]],
                  omega_matrix: List[List[np.ndarray]]):
         """
         A single EWC term for model training
 
         Parameters:
-            lam: float
+            ewc_lambda: float
                 The importance of this EWC term. 
 
             optimal_weights: List[List[np.ndarray]]
@@ -222,7 +222,7 @@ class EWC_Term():
                 optimal_weights
         """
 
-        self.lam = lam
+        self.ewc_lambda = ewc_lambda
         self.optimal_weights = deepcopy(optimal_weights)
         self.omega_matrix = deepcopy(omega_matrix)
 
@@ -234,7 +234,7 @@ class EWC_Term():
             # TODO: Make EWC work better in the case of non-start of network shared weights...
             for omega, optimal, new in zip(self.omega_matrix[layer_index], self.optimal_weights[layer_index], layer.weights):
                 loss += tf.reduce_sum(omega * tf.math.square(new-optimal))
-        return loss * self.lam/2
+        return loss * self.ewc_lambda/2
 
 
 class EWC_Term_Creator():
@@ -263,7 +263,7 @@ class EWC_Term_Creator():
             case _:
                 pass
 
-    def create_term(self, lam: float) -> EWC_Term:
+    def create_term(self, ewc_lambda: float) -> EWC_Term:
         """
         Create a new term using whatever method is specified and whatever
         data is collected at the call time. Should only be called at the
@@ -290,7 +290,7 @@ class EWC_Term_Creator():
 
         match self.ewc_method:
             case EWC_Method.NONE:
-                return EWC_Term(lam=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+                return EWC_Term(ewc_lambda=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
             
             case EWC_Method.WEIGHT_DECAY:
                 # weight decay has omega as a matrix of 1's, which we can get from our already
@@ -298,7 +298,7 @@ class EWC_Term_Creator():
                 for layer_index, layer in enumerate(omega_matrix):
                     for weight_index, weight in enumerate(layer):
                         omega_matrix[layer_index][weight_index] += 1
-                return EWC_Term(lam=lam,optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+                return EWC_Term(ewc_lambda=ewc_lambda,optimal_weights=model_current_weights, omega_matrix=omega_matrix)
             
             case EWC_Method.SIGN_FLIPPING:
                 sign_flip_callback: SignFlippingTracker = self.callback_dict["SignFlip"]  # type: ignore
@@ -311,7 +311,7 @@ class EWC_Term_Creator():
                         # Divide by zero, so also add 1
                         omega_layer.append(1/(1+weight))
                     omega_matrix.append(omega_layer)
-                return EWC_Term(lam=lam,optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+                return EWC_Term(ewc_lambda=ewc_lambda,optimal_weights=model_current_weights, omega_matrix=omega_matrix)
             
             case EWC_Method.FISHER_MATRIX:
                 # Calculate Fisher matrix and use as omega
@@ -323,11 +323,11 @@ class EWC_Term_Creator():
                 # Original paper: https://arxiv.org/pdf/1612.00796.pdf
                 fisher_calculation_callback: FisherInformationMatrixCalculator = self.callback_dict["FisherCalc"]  # type: ignore
                 omega_matrix = fisher_calculation_callback.fisher_matrices[-1]
-                return EWC_Term(lam=lam,optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
+                return EWC_Term(ewc_lambda=ewc_lambda,optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
 
             # Default case: return an empty term
             case _:
-                return EWC_Term(lam=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+                return EWC_Term(ewc_lambda=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
 
 
 class EWC_Loss(tf.keras.losses.Loss):

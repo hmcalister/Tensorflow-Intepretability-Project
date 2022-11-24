@@ -12,6 +12,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+EWC_LAMBDA = 10**0
 
 
 class SequentialLearningManager():
@@ -138,7 +139,7 @@ class SequentialLearningManager():
         self.training_histories.append(history)
 
         # Create an EWC term for the now completed task
-        self.EWC_terms.append(self.EWC_term_creator.create_term(lam=1))
+        self.EWC_terms.append(self.EWC_term_creator.create_term(ewc_lambda=EWC_LAMBDA))
         self._current_task_index += 1
 
     def plot_task_training_histories(self):
