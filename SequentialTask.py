@@ -3,10 +3,14 @@ from typing import Callable, List, Tuple, Union
 import numpy as np
 import os
 import pandas as pd
+
+from MyUtils import normalize_img
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
-
+import tensorflow_datasets as tfds
 # fmt: on
+
+RUN_EAGERLY=True
 
 class SequentialTask:
     """
@@ -99,7 +103,7 @@ class SequentialTask:
         self.model.compile(optimizer='ADAM',
                 loss=loss_fn,
                 metrics=[self.model_base_loss],
-                run_eagerly=False)
+                run_eagerly=RUN_EAGERLY)
 
     def train_on_task(self, epochs, callbacks: List[tf.keras.callbacks.Callback]) -> tf.keras.callbacks.History:
         """
@@ -353,10 +357,15 @@ class IrisClassificationTask(SequentialTask):
 
         training_features = training_dataframe[self.feature_column_names]
         training_labels = pd.get_dummies(training_dataframe["class"], prefix="class")
-        training_dataset = tf.data.Dataset.from_tensor_slices((training_features,training_labels)).batch(self.batch_size)
+        training_dataset = tf.data.Dataset.from_tensor_slices((training_features,training_labels)) \
+            .shuffle(training_samples) \
+            .batch(self.batch_size)
 
         validation_features = validation_dataframe[self.feature_column_names]
         validation_labels = pd.get_dummies(validation_dataframe["class"], prefix="class")
-        validation_dataset = tf.data.Dataset.from_tensor_slices((validation_features, validation_labels)).batch(self.batch_size)
+        validation_dataset = tf.data.Dataset.from_tensor_slices((validation_features, validation_labels)) \
+            .shuffle(validation_samples) \
+            .batch(self.batch_size)
         
+        return (training_dataset, validation_dataset)
         return (training_dataset, validation_dataset)
