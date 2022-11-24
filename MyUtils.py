@@ -11,6 +11,10 @@ import tensorflow as tf
 def powers_set(max_power: int):
     return lambda x: np.array([x[0]**i for i in range(1, max_power+1)])
 
+def normalize_img(image, label):
+    """Normalizes images: `uint8` -> `float32`."""
+    return tf.cast(image, tf.float32) / 255., label  # type: ignore
+
 def plot_history(history, keys: dict, title:str="", xlabel:str="", ylabel:str="", yscale:str="linear"):
     """
     Plot the history of a model's training.
