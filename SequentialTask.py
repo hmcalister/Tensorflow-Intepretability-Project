@@ -87,6 +87,14 @@ class SequentialTask:
         self.x_lim = x_lim
         self.y_lim = y_lim
 
+        self.model_base_loss.name = "base_loss"
+        model_base_loss_serialized: dict = tf.keras.losses.serialize(self.model_base_loss)  # type: ignore
+        # remove objects that metric cannot understand
+        del(model_base_loss_serialized["config"]["reduction"])
+        del(model_base_loss_serialized["config"]["axis"])
+        self.model_base_loss_as_metric = tf.keras.metrics.deserialize(model_base_loss_serialized)
+                
+
         self.compile_model(model_base_loss)
 
 
@@ -95,6 +103,11 @@ class SequentialTask:
         (Re)compile this tasks model with a new loss function, keeping the metrics
         """
 
+        # Tensorflow will not save/load models if the metrics include a loss function
+        # We must convert a keras loss to a keras metric to avoid this!
+        # Current hack is to store the original name of the base loss and use this to
+        # invoke a metric instance later... not great but hopefully it works!
+
         # Notice that EWC requires access to layer weights during training
         # If using numpy arrays (easier debugging)/layer.get_weights()
         # this is not possible with a compiled graph (Tensorflow restricts it)
@@ -102,10 +115,10 @@ class SequentialTask:
         # we can use .weights and use tensorflow Tensors instead!
         self.model.compile(optimizer='ADAM',
                 loss=loss_fn,
-                metrics=[self.model_base_loss],
+                metrics=[self.model_base_loss_as_metric],
                 run_eagerly=RUN_EAGERLY)
 
-    def train_on_task(self, epochs, callbacks: List[tf.keras.callbacks.Callback]) -> tf.keras.callbacks.History:
+    def train_on_task(self, epochs, callbacks: List[tf.keras.callbacks.Callback] = []) -> tf.keras.callbacks.History:
         """
         Train on the train dataset for a number of epochs. Use any callbacks given
         If self.validation_data is not None, validation data used.

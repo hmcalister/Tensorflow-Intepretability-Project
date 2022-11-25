@@ -52,7 +52,6 @@ task_head_layers = [
 # Currently all tasks have the same structure so only one loss
 # Could use a list in future
 loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
-loss_fn.name = "base_loss"
 
 # Training parameters
 epochs = 50
