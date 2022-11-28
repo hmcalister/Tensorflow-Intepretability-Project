@@ -2,10 +2,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from MyUtils import *
-from MyCallbacks import *
-from SequentialLearningManager import SequentialLearningManager
-from SequentialTask import *
-from EWCMethods import EWC_Method
+from SequentialLearning.SequentialLearningManager import SequentialLearningManager
+from SequentialLearning.SequentialTask import *
+from SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -54,12 +53,11 @@ task_head_layers = [
 loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
 # Training parameters
-epochs = 50
+epochs = 5
 training_batches = 300
-validation_batches = 100
+validation_batches = 50
 batch_size = 32
-ewc_method = EWC_Method.WEIGHT_DECAY
-
+ewc_method = EWC_Method.MOMENTUM_BASED
 
 print(f"BASE MODEL SUMMARY")
 base_model.summary()
@@ -107,4 +105,4 @@ manager.plot_validation_callback_data(
     "loss", title="Task Total Loss Over All Epochs", ylabel="Total Loss (CategoricalCrossentropy)")
 manager.plot_validation_callback_data(
     "base_loss", title="Task Base Losses Over All Epochs", ylabel="Base Loss (CategoricalCrossentropy)")
-manager.plot_task_training_histories()
+multiplot_data(manager.get_training_histories())

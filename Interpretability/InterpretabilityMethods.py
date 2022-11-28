@@ -101,8 +101,8 @@ def _process_occlude_image(
     model: tf.keras.Model,
     image_tensor: tf.Tensor,
     label: tf.Tensor,
-    patch_size: int = 3,
-    stride: int = 1
+    patch_size: int,
+    stride: int
 ):
     # Convert the image to something more... manageable
     # Remove first index (added from tf dataset)
@@ -110,18 +110,19 @@ def _process_occlude_image(
     image: np.ndarray = np.array(image_tensor)  # type: ignore
     sensitivity_map = np.zeros((image.shape[0], image.shape[1]))
     patched_images = []
+    patch_value = np.average([np.max(image), np.min(image)])
     # Loop over every possible position of the occulsion square
     # note for now the stride is simply the patch size, i.e.
     # disjoint patches
-    for top_left_y in range(0, image.shape[0],patch_size):
-        for top_left_x in range(0, image.shape[1],patch_size):
+    for top_left_y in range(0, image.shape[0],stride):
+        for top_left_x in range(0, image.shape[1],stride):
             # Copy the original image, apply a square of black over that patch
             patched_image = np.array(image, copy=True)
             patched_image[
                 top_left_y:top_left_y+patch_size,
                 top_left_x:top_left_x+patch_size, 
                 : 
-            ] = 0.0
+            ] = patch_value
             # We collect all the patched images together to be processed in a single batch
             patched_images.append(patched_image)
     patched_images = np.array(patched_images)
@@ -130,13 +131,14 @@ def _process_occlude_image(
     predictions = model(patched_images) * label # type: ignore
     # Loop over predictions and apply confidence to the sensitivity map
     prediction_index = 0
-    for top_left_y in range(0, image.shape[0],patch_size):
-        for top_left_x in range(0, image.shape[1],patch_size):
-            confidence = predictions[prediction_index] 
+    for top_left_y in range(0, image.shape[0],stride):
+        for top_left_x in range(0, image.shape[1],stride):
+            confidence = np.array(predictions[prediction_index])
             sensitivity_map[
                 top_left_y:top_left_y+patch_size,
                 top_left_x:top_left_x+patch_size,
-            ] = confidence
+            ] = np.max(confidence)
+            prediction_index += 1
     return sensitivity_map
 
 def occlusion_sensitivity(
@@ -174,10 +176,14 @@ def occlusion_sensitivity(
         # So zip them together to get image, label pairs directly
         images = batch[0]
         labels = batch[1]
+        sensitivity_maps = []
         for image, label in zip(images, labels):  # type: ignore
             sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride)
+            sensitivity_maps.append(sensitivity_map)
             # Finally finished with one image! Check if we have met quota
             processed_images += 1
             if processed_images >= num_items:
                 break
+        plot_images(images[:num_items])
+        plot_images(sensitivity_maps)
         # TODO Plot sensitivity maps returned and combine with original image...

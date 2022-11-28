@@ -1,12 +1,12 @@
 # fmt: off
-from typing import List, Union
-import typing
+
+from .SequentialTask import SequentialTask
+from .EWC_Methods.EWC_Methods import *
 import numpy as np
 import matplotlib.pyplot as plt
-from SequentialTask import SequentialTask
-from EWCMethods import *
-from MyUtils import *
-from MyCallbacks import *
+from typing import Any, List, TextIO, Union
+
+
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
@@ -22,6 +22,8 @@ class SequentialLearningManager():
     (SequentialTask) that offers a task head (placed at end of model) the
     task data (tf.keras.Dataset) and some validation data to be tested each epoch.
     """
+
+    MODEL_SAVE_BASE_PATH = "models/sequential_models"
 
     class SequentialValidationCallback(tf.keras.callbacks.Callback):
         def __init__(self, tasks: List[SequentialTask]):
@@ -94,7 +96,7 @@ class SequentialLearningManager():
         if isinstance(epochs, int):
             self.epochs: List[int] = [epochs for _ in range(len(self.tasks))]
 
-        self._log_file:typing.TextIO = open(log_file_path, "wt")
+        self._log_file: TextIO = open(log_file_path, "wt")
 
     def train_all(self):
         """
@@ -115,18 +117,6 @@ class SequentialLearningManager():
 
         current_task = self.tasks[self._current_task_index]
 
-        # Quick log of all EWC weights 
-        self.log_to_file(f"{'='*80}")
-        self.log_to_file(f"TASK {self._current_task_index}")
-        for term_index, ewc_term in enumerate(self.EWC_terms):
-                self.log_to_file(f"{'-'*80}")
-                self.log_to_file(f"TERM {term_index}")
-                for layer_index, layer in enumerate(ewc_term.optimal_weights):
-                    self.log_to_file(f"LAYER {layer_index}")
-                    for tensor in layer:
-                        self.log_to_file(f"{tensor}")
-        self.log_to_file(f"{'='*80}")
-
         # Recompile model to use new loss
         # Note we keep the metrics!
         for task in self.tasks:
@@ -138,12 +128,16 @@ class SequentialLearningManager():
                                           callbacks=[self.validation_callback, *self.EWC_term_creator.callback_dict.values()])
         self.training_histories.append(history)
 
+        # Quickly save this model to disk after training
+        # Notice we use model name here, possible security risk/bug if model name isn't valid path!
+        current_task.model.save(SequentialLearningManager.MODEL_SAVE_BASE_PATH+f"/{current_task.model.name}")
+
         # Create an EWC term for the now completed task
         self.EWC_terms.append(self.EWC_term_creator.create_term(ewc_lambda=EWC_LAMBDA))
         self._current_task_index += 1
 
-    def plot_task_training_histories(self):
-        multiplot_data(self.training_histories)
+    def get_training_histories(self):
+        return self.training_histories
 
     def plot_validation_callback_data(self, key:str, title: str="", ylabel: str=""):
         """
@@ -172,7 +166,7 @@ class SequentialLearningManager():
         plt.tight_layout()
         plt.show()
 
-    def log_to_file(self, log_string: typing.Any):
+    def log_to_file(self, log_string: Any):
         """
         A quick and overly simple logging function to dump something to a file
         Separates something potentially interesting from screens of TF logs

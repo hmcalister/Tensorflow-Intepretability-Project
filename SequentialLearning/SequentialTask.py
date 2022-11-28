@@ -10,7 +10,9 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 # fmt: on
 
-RUN_EAGERLY=True
+# True for easier debugging
+# False for compiled models, faster train time
+RUN_EAGERLY: bool = False
 
 class SequentialTask:
     """
