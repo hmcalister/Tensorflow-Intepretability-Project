@@ -5,10 +5,10 @@ from typing import List
 import numpy as np
 import os
 
-from SequentialTask import SequentialTask
-from SignFlippingTracker import SignFlippingTracker
-from MomentumBasedTracker import MomentumBasedTracker
-from FisherInformationMatrixCalculator import FisherInformationMatrixCalculator
+from ..SequentialTasks.SequentialTask import SequentialTask
+from .SignFlippingTracker import SignFlippingTracker
+from .MomentumBasedTracker import MomentumBasedTracker
+from .FisherInformationMatrixCalculator import FisherInformationMatrixCalculator
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf

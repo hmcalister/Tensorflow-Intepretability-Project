@@ -2,8 +2,8 @@
 from copy import deepcopy
 import os
 from typing import List
+from ..SequentialTasks.SequentialTask import SequentialTask
 
-from SequentialLearning.SequentialTask import SequentialTask
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on

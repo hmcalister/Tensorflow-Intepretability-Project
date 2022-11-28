@@ -1,6 +1,6 @@
 # fmt: off
 
-from .SequentialTask import SequentialTask
+from .SequentialTasks.SequentialTask import SequentialTask
 from .EWC_Methods.EWC_Methods import *
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,9 +1,7 @@
 # fmt: off
-import numpy as np
-import matplotlib.pyplot as plt
 from MyUtils import *
 from SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from SequentialLearning.SequentialTask import *
+from SequentialLearning.SequentialTasks.MNISTClassificationTask import MNISTClassificationTask
 from SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
@@ -53,7 +51,7 @@ task_head_layers = [
 loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
 # Training parameters
-epochs = 5
+epochs = 50
 training_batches = 300
 validation_batches = 50
 batch_size = 32

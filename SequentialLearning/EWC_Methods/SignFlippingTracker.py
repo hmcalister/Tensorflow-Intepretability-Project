@@ -1,6 +1,6 @@
 # fmt: off
 from enum import Enum
-from WeightTrackingCallback import WeightTrackingCallback
+from .WeightTrackingCallback import WeightTrackingCallback
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
