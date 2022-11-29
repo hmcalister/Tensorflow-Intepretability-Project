@@ -12,7 +12,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-EWC_LAMBDA = 10**0
+EWC_LAMBDA = 10**-1
 
 
 class SequentialLearningManager():
