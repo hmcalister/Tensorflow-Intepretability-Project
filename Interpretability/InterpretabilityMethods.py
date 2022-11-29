@@ -48,7 +48,7 @@ def plot_images(images: List[np.ndarray], figure_title:str = "", subplot_titles:
 
 def kernel_inspection(
         model: tf.keras.Model,
-        layer_index: int,
+        layer_name: str = None,  # type: ignore
         steps:int = 500,
         step_size = 0.01,
     ):
@@ -62,9 +62,9 @@ def kernel_inspection(
     Parameters:
         model: tf.keras.Model
             The model to sample layers from
-        layer_index: int
-            An index into the supplied model's layers
-            Layer at this index should be a conv2d layer
+        layer_name: str
+            The layer from the model to use for kernel inspection
+            If layer_name is None (default) then use final conv2D layer instead
         steps: int
             The number of steps to iterate over when building a visualization
             More steps gives a smoother/better interpretation
@@ -73,19 +73,28 @@ def kernel_inspection(
             Smaller steps results in longer wait times but more stable visuals
     """
 
-    target_layer = model.layers[layer_index]
-    print(target_layer.name)
-    print()
+    # Target layer of kernel inspection, either user defined or last conv layer
+    target_layer: tf.keras.layers.Layer
+    if layer_name is not None:
+       target_layer = model.get_layer(layer_name)
+    # if no layer name specified, just get last conv layer by iterating over all layers
+    if layer_name is None:
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.Conv2D):
+                target_layer = layer
+    print(f"OPERATING ON {target_layer.name}")
+
     submodel = tf.keras.models.Model(
         model.input,
         [target_layer.output]
     )
+
     filter_results = []
     # Get input shape and replace None (batch placeholder) with 1
     noise_shape = submodel.input_shape
     noise_shape = (1, *noise_shape[1:])
     for filter_index in range(target_layer.filters):
-        print(f"OPERATING ON FILTER: {filter_index+1}", end="\r")
+        print(f"OPERATING ON FILTER: {filter_index+1}/{target_layer.filters}", end="\r")
         # Make random noise the layer can use
         x: tf.Variable = tf.Variable(tf.cast(np.random.random(noise_shape), tf.float32))
         for _ in range(steps):
@@ -98,21 +107,21 @@ def kernel_inspection(
         filter_results.append(x[0,:,:,:])  # type: ignore
 
     plot_images(filter_results, 
-        titles=[f"Filter {i+1}" for i in range(0,len(filter_results))],
+        figure_title="Kernel Inspection",
+        subplot_titles=[f"Filter {i+1}" for i in range(0,len(filter_results))],
         cmap="gray"
     )
 
 def _process_occlude_image(
     model: tf.keras.Model,
-    image_tensor: tf.Tensor,
-    label: tf.Tensor,
+    image: np.ndarray,
+    label: np.ndarray,
     patch_size: int,
     stride: int
 ):
     # Convert the image to something more... manageable
     # Remove first index (added from tf dataset)
     # convert to numpy array
-    image: np.ndarray = np.array(image_tensor)  # type: ignore
     sensitivity_map = np.zeros((image.shape[0], image.shape[1]))
     patched_images = []
     patch_value = np.average([np.max(image), np.min(image)])
@@ -148,8 +157,8 @@ def _process_occlude_image(
 
 def occlusion_sensitivity(
     model: tf.keras.Model,
-    data: tf.data.Dataset,
-    num_items: int,
+    images: np.ndarray,
+    labels: np.ndarray,
     patch_size: int = 3,
     stride: int = 1):
     """
@@ -159,10 +168,13 @@ def occlusion_sensitivity(
     Parameters:
         model: tf.keras.Model
             The model to test sensitivity of
-        data: tf.data.Dataset
-            The data to test over. Should be a subsection of the entire dataset
-            Use data.take() to get a small subset of data first
-            Each image is processed, so the size of this dataset is number of images
+        images: np.ndarray
+            An array of images to be processed in this method
+            Can be taken from a dataset and stored 
+            (e.g. images,labels = dataset.take(1).as_numpy_iterator().next())
+            Should have shape (batch_size, image_x, image_y, color_channels)
+        labels: np.ndarray
+            An array of labels to be processed, one to one with images array
         num_items: int
             The number of items to process overall (from the dataset)
         patch_size: int
@@ -172,23 +184,11 @@ def occlusion_sensitivity(
             Currently unused (stride = patch_size)
     """
 
-    processed_images = 0
+    sensitivity_maps = []
+    for image, label in zip(images, labels):
+        sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride)
+        sensitivity_maps.append(sensitivity_map)
+    # plot_images(images[:num_items])
+    plot_images(sensitivity_maps, figure_title="Sensitivity Mappings")
+    # TODO Plot sensitivity maps returned and combine with original image...
 
-    # Loop over each batch in the dataset
-    for batch in data:
-        # Pull out the image/label pair from tuple
-        # Each of these variables have dimension starting with batch_size
-        # So zip them together to get image, label pairs directly
-        images = batch[0]
-        labels = batch[1]
-        sensitivity_maps = []
-        for image, label in zip(images, labels):  # type: ignore
-            sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride)
-            sensitivity_maps.append(sensitivity_map)
-            # Finally finished with one image! Check if we have met quota
-            processed_images += 1
-            if processed_images >= num_items:
-                break
-        plot_images(images[:num_items])
-        plot_images(sensitivity_maps)
-        # TODO Plot sensitivity maps returned and combine with original image...
