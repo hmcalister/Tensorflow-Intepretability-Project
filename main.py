@@ -51,11 +51,11 @@ task_head_layers = [
 loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
 # Training parameters
-epochs = 50
+epochs = 10
 training_batches = 300
 validation_batches = 50
 batch_size = 32
-ewc_method = EWC_Method.MOMENTUM_BASED
+ewc_method = EWC_Method.WEIGHT_CHANGE
 
 print(f"BASE MODEL SUMMARY")
 base_model.summary()
