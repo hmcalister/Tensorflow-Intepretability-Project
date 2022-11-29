@@ -1,4 +1,5 @@
 # fmt: off
+from copy import deepcopy
 from typing import Callable, List, Tuple, Union
 
 import os
@@ -23,7 +24,7 @@ class SequentialTask:
             model_base_loss: tf.keras.losses.Loss,
             training_dataset: tf.data.Dataset,
             training_batches: int,
-            validation_dataset: Union[tf.data.Dataset, None] = None,
+            validation_dataset: tf.data.Dataset = None,  # type: ignore
             validation_batches: int = 0,
             batch_size: int = 0,
             input_data_fn: Union[Callable, None] = None,
@@ -86,7 +87,7 @@ class SequentialTask:
         self.y_lim = y_lim
 
         self.model_base_loss.name = "base_loss"
-        model_base_loss_serialized: dict = tf.keras.losses.serialize(self.model_base_loss)  # type: ignore
+        model_base_loss_serialized: dict = deepcopy(tf.keras.losses.serialize(self.model_base_loss))  # type: ignore
         # remove objects that metric cannot understand
         del(model_base_loss_serialized["config"]["reduction"])
         del(model_base_loss_serialized["config"]["axis"])
