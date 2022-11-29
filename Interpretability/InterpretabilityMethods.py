@@ -2,13 +2,14 @@
 from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-def plot_images(images: List[np.ndarray], titles:List[str]=[], cmap: str = "viridis"):
+def plot_images(images: List[np.ndarray], figure_title:str = "", subplot_titles:List[str]=[], cmap: str = "viridis"):
     """
     Plot a series of images in a grid using matplotlib and subplots
     Useful to show interpretations of different filters in conv-nets
@@ -19,7 +20,10 @@ def plot_images(images: List[np.ndarray], titles:List[str]=[], cmap: str = "viri
             Images (items of the array) should be square, etc.. and ar passed directly to imshow
             The list itself can be any length (even non-square)
 
-        titles: List[str]
+        figure_title: str
+            The title of the entire figure
+
+        subplot_titles: List[str]
             Title each image. Defaults to empty array.
             If empty, no titles are added
 
@@ -32,12 +36,13 @@ def plot_images(images: List[np.ndarray], titles:List[str]=[], cmap: str = "viri
     if len(images) % total_cols != 0: total_rows += 1
 
     fig = plt.figure()
+    fig.suptitle(figure_title)
     for i in range(0,len(images)):
         ax = fig.add_subplot(total_rows, total_cols, i+1)
         ax.imshow(images[i], cmap=cmap)
         ax.axis("off")
-        if i < len(titles):
-            ax.set_title(titles[i])
+        if i < len(subplot_titles):
+            ax.set_title(subplot_titles[i], fontsize=8)
     plt.tight_layout()
     plt.show()
 
