@@ -45,7 +45,6 @@ def plot_history(history, keys: dict, title:str="", xlabel:str="", ylabel:str=""
     plt.tight_layout()
     plt.show()
 
-
 def plotFunctionSingleVariableInputs(model, 
     input_shape, input_lim, step, 
     static_input_val = 0, data_fn=None):
