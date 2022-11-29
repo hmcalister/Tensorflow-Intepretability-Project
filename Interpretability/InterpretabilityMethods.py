@@ -192,3 +192,87 @@ def occlusion_sensitivity(
     plot_images(sensitivity_maps, figure_title="Sensitivity Mappings")
     # TODO Plot sensitivity maps returned and combine with original image...
 
+def GRADCAM(
+    model: tf.keras.Model,
+    images: np.ndarray,
+    labels: np.ndarray,
+    layer_name:str = None, # type: ignore
+    ignore_negative_gradients: bool = False,
+    show_predictions: bool = False): 
+    """
+    Compute GRADCAM over the number of items required.
+    Note that data should be a tf.data.Dataset so the class of each image
+    can be extracted from the data.
+
+    Parameters:
+        model: tf.keras.Model
+            The model to test sensitivity of
+        images: np.ndarray
+            An array of images to be processed in this method
+            Can be taken from a dataset and stored 
+            (e.g. images,labels = dataset.take(1).as_numpy_iterator().next())
+            Should have shape (batch_size, image_x, image_y, color_channels)
+        labels: np.ndarray
+            An array of labels to be processed, one to one with images array
+        layer_name: str
+            The layer from the model to use for GRADCAM
+            If layer_name is None (default) then use final conv2D layer instead
+        ignore_negative_gradients: bool
+            Boolean to ignore negative gradients
+            May give better results but may have no good basis in theory
+        show_predictions: bool
+            Boolean to show predictions as title of subplots
+    """
+
+    # The input layer of the gradcam model is the input of the original model
+    original_inputs = model.inputs
+    # We also need the original model output
+    original_output = model.output
+    # the gradcam output is trickier, either specified layer or final conv layer
+    gradcam_output_layer: tf.keras.layers.Layer
+    if layer_name is not None:
+       gradcam_output_layer = model.get_layer(layer_name)
+    # if no layer name specified, just get last conv layer by iterating over all layers
+    if layer_name is None:
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.Conv2D):
+                gradcam_output_layer = layer
+    
+    # Create the new gradcam model combining inputs
+    gradcam_model = tf.keras.models.Model([original_inputs], [gradcam_output_layer.output, original_output])
+    gradcam_images = []
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = gradcam_model(images)  # type: ignore
+        # Note multiplying labels by predictions gets us only the "correct" predictions
+        # as labels are one-hot. This is the class-activated part
+        loss = labels * predictions
+    grads = tape.gradient(loss, conv_outputs)
+    # Now we have the processed information we can work image by image
+    for index, (image, _) in enumerate(zip(images, labels)):  # type: ignore
+        # Output of last conv layer to be scaled by "importance" (gradient)
+        output = conv_outputs[index]
+        current_grads = grads[index]
+        weights = tf.reduce_mean(current_grads, axis=(0,1))
+        cam = np.ones(output.shape[0:2], dtype=np.float32)
+        for index, w in enumerate(weights):
+            cam += w * output[:, :, index]
+
+        if ignore_negative_gradients:
+            # Zero out negative grads
+            cam = np.maximum(cam, 0)
+        # Stretch last conv output to original image size
+        cam = cv2.resize(np.array(cam), image.shape[0:2])
+        # Do some image processing to place CAM as heatmap on top of original image
+        heatmap = cv2.cvtColor((cam - cam.min()) / (cam.max() - cam.min()), cv2.COLOR_BGR2RGB)
+        cam = cv2.applyColorMap(np.uint8(255*heatmap), cv2.COLORMAP_JET)  # type: ignore
+        color_image = cv2.cvtColor(np.uint8(255*image), cv2.COLOR_GRAY2RGB)  # type: ignore
+        gradcam_image = cv2.addWeighted(color_image, 0.5, cam, 0.6, 0)
+        gradcam_images.append(gradcam_image)
+    
+    subplot_titles = []
+    if show_predictions:
+        subplot_titles = [
+            f"Label: {l}\nPrediction\n{np.around(tf.nn.softmax(p), 2)}" for l, p in zip(labels, predictions)
+        ]
+    plot_images(gradcam_images, figure_title="GRADCAM", subplot_titles=subplot_titles)
