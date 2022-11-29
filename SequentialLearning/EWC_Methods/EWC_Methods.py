@@ -8,18 +8,22 @@ import os
 from ..SequentialTasks.SequentialTask import SequentialTask
 from .SignFlippingTracker import SignFlippingTracker
 from .MomentumBasedTracker import MomentumBasedTracker
+from .TotalWeightChangeTracker import TotalWeightChangeTracker
 from .FisherInformationMatrixCalculator import FisherInformationMatrixCalculator
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+
 class EWC_Method(Enum):
     NONE = 1,
     WEIGHT_DECAY = 2,
     SIGN_FLIPPING = 3,
     MOMENTUM_BASED = 4,
-    FISHER_MATRIX = 5
+    WEIGHT_CHANGE = 5,
+    FISHER_MATRIX = 6
+
 
 class EWC_Term():
     """
@@ -31,7 +35,6 @@ class EWC_Term():
     So if a larger omega matrix is given (e.g. Fisher over all weights) this is okay!
     The extra omega matrix is ignored
     """
-
 
     def __init__(self,
                  ewc_lambda: float,
@@ -69,6 +72,7 @@ class EWC_Term():
                 loss += tf.reduce_sum(omega * tf.math.square(new-optimal))
         return loss * self.ewc_lambda/2
 
+
 class EWC_Term_Creator():
 
     def __init__(self, ewc_method: EWC_Method, model: tf.keras.models.Model, tasks: List[SequentialTask]) -> None:
@@ -85,13 +89,15 @@ class EWC_Term_Creator():
         self.ewc_method = ewc_method
         self.model = model
         self.model_layers = model.layers
-        self.tasks=tasks
-        self.callback_dict:dict[str, tf.keras.callbacks.Callback] = {}
+        self.tasks = tasks
+        self.callback_dict: dict[str, tf.keras.callbacks.Callback] = {}
         match self.ewc_method:
             case EWC_Method.SIGN_FLIPPING:
                 self.callback_dict["SignFlip"] = SignFlippingTracker(model)
             case EWC_Method.MOMENTUM_BASED:
                 self.callback_dict["MomentumBased"] = MomentumBasedTracker(model)
+            case EWC_Method.WEIGHT_CHANGE:
+                self.callback_dict["WeightChange"] = TotalWeightChangeTracker(model)
             case EWC_Method.FISHER_MATRIX:
                 self.callback_dict["FisherCalc"] = FisherInformationMatrixCalculator(tasks)
             case _:
@@ -118,7 +124,6 @@ class EWC_Term_Creator():
             for weight_index, weight in enumerate(layer.weights):
                 model_layer_weights.append(weight)
             model_current_weights.append(model_layer_weights)
-        
 
         match self.ewc_method:
             case EWC_Method.NONE:
@@ -131,7 +136,7 @@ class EWC_Term_Creator():
                     model_current_weights.append(current_weights)
                     omega_matrix.append(current_omega)
                 return EWC_Term(ewc_lambda=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
-            
+
             case EWC_Method.WEIGHT_DECAY:
                 # weight decay has omega as a matrix of 1's, which we can get from our already
                 # calculated matrix of 0's !
@@ -144,7 +149,7 @@ class EWC_Term_Creator():
                     model_current_weights.append(current_weights)
                     omega_matrix.append(current_omega)
                 return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
-            
+
             case EWC_Method.SIGN_FLIPPING:
                 sign_flip_callback: SignFlippingTracker = self.callback_dict["SignFlip"]  # type: ignore
                 omega_matrix = []
@@ -157,7 +162,7 @@ class EWC_Term_Creator():
                         omega_layer.append(1/(1+weight))
                     omega_matrix.append(omega_layer)
                 return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
-            
+
             case EWC_Method.MOMENTUM_BASED:
                 momentum_based_callback: MomentumBasedTracker = self.callback_dict["MomentumBased"]  # type: ignore
                 omega_matrix = []
@@ -170,7 +175,20 @@ class EWC_Term_Creator():
                         omega_layer.append(1/(1+weight))
                     omega_matrix.append(omega_layer)
                 return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
-            
+
+            case EWC_Method.WEIGHT_CHANGE:
+                weight_change_callback: TotalWeightChangeTracker = self.callback_dict["WeightChange"]  # type: ignore
+                omega_matrix = []
+                for layer_index, layer in enumerate(weight_change_callback.total_distances):
+                    omega_layer = []
+                    for weight_index, weight in enumerate(layer):
+                        # An important weight moves very little (?)
+                        # So we take the reciprocal, which could divide by zero
+                        # so also add 1
+                        omega_layer.append(1/(1+weight))
+                    omega_matrix.append(omega_layer)
+                return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+
 
             case EWC_Method.FISHER_MATRIX:
                 # Calculate Fisher matrix and use as omega
@@ -180,13 +198,16 @@ class EWC_Term_Creator():
                 # Details here: https://towardsdatascience.com/an-intuitive-look-at-fisher-information-2720c40867d8
                 # Example implementation: https://github.com/db434/EWC/blob/master/ewc.py
                 # Original paper: https://arxiv.org/pdf/1612.00796.pdf
+                # type: ignore
                 fisher_calculation_callback: FisherInformationMatrixCalculator = self.callback_dict["FisherCalc"]  # type: ignore
                 omega_matrix = fisher_calculation_callback.fisher_matrices[-1]
-                return EWC_Term(ewc_lambda=ewc_lambda,optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
+                # type: ignore
+                return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
 
             # Default case: return an empty term
             case _:
                 return EWC_Term(ewc_lambda=0, optimal_weights=model_current_weights, omega_matrix=omega_matrix)
+
 
 class EWC_Loss(tf.keras.losses.Loss):
     def __init__(self, base_loss: tf.keras.losses.Loss,
@@ -194,7 +215,7 @@ class EWC_Loss(tf.keras.losses.Loss):
                  EWC_terms: List[EWC_Term]):
         """
         Create a new instance of a loss function with EWC augmentation
-        
+
         Parameters:
             base_loss: tf.keras.losses.Loss
                 The base loss function (before EWC terms)
