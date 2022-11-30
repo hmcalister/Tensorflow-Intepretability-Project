@@ -84,7 +84,7 @@ class EWC_Term_Creator():
                 Enum to set term creation method, e.g. sign_flip, weight_decay
 
             model: tf.keras.models.Model
-                The model to base EWC off of
+                The model to calculate elastic weight consolidation
         """
         self.ewc_method = ewc_method
         self.model = model
