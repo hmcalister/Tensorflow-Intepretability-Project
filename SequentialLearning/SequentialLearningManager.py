@@ -136,7 +136,7 @@ class SequentialLearningManager():
                     callbacks=[self.validation_callback, *self.EWC_term_creator.callback_dict.values(), *callbacks])
         self.training_histories.append(history)
 
-        # Quickly save this model to disk after training
+        # Save this model to disk after training
         # Notice we use model name here, possible security risk/bug if model name isn't valid path!
         current_task.model.save(SequentialLearningManager.MODEL_SAVE_BASE_PATH+f"/{current_task.model.name}")
 
