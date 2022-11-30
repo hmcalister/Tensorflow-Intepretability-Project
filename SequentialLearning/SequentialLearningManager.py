@@ -98,18 +98,26 @@ class SequentialLearningManager():
 
         self._log_file: TextIO = open(log_file_path, "wt")
 
-    def train_all(self):
+    def train_all(self, callbacks: List[tf.keras.callbacks.Callback] = []):
         """
         Train all tasks, sequentially
+
+        Parameters:
+            callbacks: List[tf.keras.callbacks.Callback]
+                The callbacks to add to each task
         """
 
         while self._current_task_index < len(self.tasks):
             print(f"---***--- {self.tasks[self._current_task_index].name} ---***---")
-            self.train_next_task()
+            self.train_next_task(callbacks)
         
-    def train_next_task(self):
+    def train_next_task(self, callbacks: List[tf.keras.callbacks.Callback] = []):
         """
         Begin training on the next task in the list, or return None if no such task exists
+
+        Parameters:
+            callbacks: List[tf.keras.callbacks.Callback]
+                The callbacks to add to this task
         """
 
         if self._current_task_index >= len(self.tasks):
@@ -125,7 +133,7 @@ class SequentialLearningManager():
 
         # Train model, store history
         history = current_task.train_on_task(epochs=self.epochs[self._current_task_index],
-                                          callbacks=[self.validation_callback, *self.EWC_term_creator.callback_dict.values()])
+                    callbacks=[self.validation_callback, *self.EWC_term_creator.callback_dict.values(), *callbacks])
         self.training_histories.append(history)
 
         # Quickly save this model to disk after training
