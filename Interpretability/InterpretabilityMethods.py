@@ -198,7 +198,7 @@ def GRADCAM(
     labels: np.ndarray,
     layer_name:str = None, # type: ignore
     ignore_negative_gradients: bool = False,
-    show_predictions: bool = False): 
+    show_predictions: int = 0): 
     """
     Compute GRADCAM over the number of items required.
     Note that data should be a tf.data.Dataset so the class of each image
@@ -220,8 +220,10 @@ def GRADCAM(
         ignore_negative_gradients: bool
             Boolean to ignore negative gradients
             May give better results but may have no good basis in theory
-        show_predictions: bool
-            Boolean to show predictions as title of subplots
+        show_predictions: int
+            Show model predictions of classes (and true classes) as subplot titles
+            Given integer is number of decimal points to round softmax model output to
+            If given 0 (default) titles are eschewed
     """
 
     # The input layer of the gradcam model is the input of the original model
@@ -271,8 +273,8 @@ def GRADCAM(
         gradcam_images.append(gradcam_image)
     
     subplot_titles = []
-    if show_predictions:
+    if show_predictions > 0:
         subplot_titles = [
-            f"Label: {l}\nPrediction\n{np.around(tf.nn.softmax(p), 2)}" for l, p in zip(labels, predictions)
+            f"Label: {l}\nPrediction\n{np.around(tf.nn.softmax(p), show_predictions)}" for l, p in zip(labels, predictions)
         ]
-    plot_images(gradcam_images, figure_title="GRADCAM", subplot_titles=subplot_titles)    plot_images(gradcam_images, figure_title=f"GRADCAM\n{model.name} - {layer_name}", subplot_titles=subplot_titles)
+    plot_images(gradcam_images, figure_title=f"GRADCAM\n{model.name} - {layer_name}", subplot_titles=subplot_titles)
