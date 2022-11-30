@@ -107,7 +107,7 @@ def kernel_inspection(
         filter_results.append(x[0,:,:,:])  # type: ignore
 
     plot_images(filter_results, 
-        figure_title="Kernel Inspection",
+        figure_title=f"Kernel Inspection\n{model.name} - {layer_name}",
         subplot_titles=[f"Filter {i+1}" for i in range(0,len(filter_results))],
         cmap="gray"
     )
@@ -189,7 +189,7 @@ def occlusion_sensitivity(
         sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride)
         sensitivity_maps.append(sensitivity_map)
     # plot_images(images[:num_items])
-    plot_images(sensitivity_maps, figure_title="Sensitivity Mappings")
+    plot_images(sensitivity_maps, figure_title=f"Sensitivity Mappings - {model.name}")
     # TODO Plot sensitivity maps returned and combine with original image...
 
 def GRADCAM(
@@ -275,4 +275,4 @@ def GRADCAM(
         subplot_titles = [
             f"Label: {l}\nPrediction\n{np.around(tf.nn.softmax(p), 2)}" for l, p in zip(labels, predictions)
         ]
-    plot_images(gradcam_images, figure_title="GRADCAM", subplot_titles=subplot_titles)
+    plot_images(gradcam_images, figure_title="GRADCAM", subplot_titles=subplot_titles)    plot_images(gradcam_images, figure_title=f"GRADCAM\n{model.name} - {layer_name}", subplot_titles=subplot_titles)
