@@ -266,7 +266,7 @@ def GRADCAM(
         # Stretch last conv output to original image size
         cam = cv2.resize(np.array(cam), image.shape[0:2])
         # Do some image processing to place CAM as heatmap on top of original image
-        heatmap = cv2.cvtColor((cam - cam.min()) / (cam.max() - cam.min()), cv2.COLOR_BGR2RGB)
+        heatmap = (cam - cam.min()) / (cam.max() - cam.min())
         cam = cv2.applyColorMap(np.uint8(255*heatmap), cv2.COLORMAP_JET)  # type: ignore
         color_image = cv2.cvtColor(np.uint8(255*image), cv2.COLOR_GRAY2RGB)  # type: ignore
         gradcam_image = cv2.addWeighted(color_image, 0.5, cam, 0.6, 0)
