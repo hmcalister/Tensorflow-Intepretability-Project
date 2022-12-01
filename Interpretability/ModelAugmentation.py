@@ -1,7 +1,7 @@
 # fmt: off
 from copy import deepcopy
 from enum import Enum
-from typing import List
+from typing import Callable, List, Sequence
 import numpy as np
 
 import os
@@ -10,14 +10,100 @@ import tensorflow as tf
 # fmt: on
 
 class ComparisonMethod(Enum):
-    LAYER_WISE = 0,
-    MODEL_WISE = 1,
+    MODEL_WISE = 0,
+    LAYER_WISE = 1,
 
-def threshold_by_omega(
+class AggregationLevel(Enum):
+    NO_AGGREGATION = 0,
+    UNIT = 1
+
+class AggregationMethod(Enum):
+    MEAN_AVERAGE = 0,
+    MINIMUM = 1,
+    MAXIMUM = 2,
+
+
+def _aggregate(matrices: Sequence[np.ndarray], aggregation_method: AggregationMethod):
+    """
+    Aggregate a list of tensors together to a single value
+    Returns a list of numpy arrays with the same shape but filled with the aggregated value
+    """
+
+    flat_matrix = np.concatenate([m.flatten() for m in matrices])
+    aggregation_value: np.float32
+    match aggregation_method:
+        case AggregationMethod.MEAN_AVERAGE:
+            aggregation_value = np.mean(flat_matrix)
+        case AggregationMethod.MINIMUM:
+            aggregation_value = np.min(flat_matrix)
+        case AggregationMethod.MAXIMUM:
+            aggregation_value = np.max(flat_matrix)
+    return [np.full_like(m, aggregation_value) for m in matrices]
+
+def aggregate_omega(
+    omega_matrix: List[List[tf.Variable]],
+    aggregation_level: AggregationLevel,
+    aggregation_method: AggregationMethod,
+    ) -> List[List[tf.Variable]]:
+    """
+    Take a weight importance matrix and return an aggregated matrix with the same dimensionality
+    (except possibly the final dimension which may be reduced)
+    Should not impact loop definitions etc
+    """
+
+    match aggregation_level:
+        case AggregationLevel.NO_AGGREGATION:
+            return omega_matrix
+
+        case AggregationLevel.UNIT:
+            # This method requires a lot of work to separate the unit specific importances
+            aggregated_omega = []
+            # We start by looking at layers - so far, so typical!
+            # Each layer has a number of units so now we must get into the weeds
+            for layer_index, layer in enumerate(omega_matrix):
+                # We have to transform each layer in turn
+                # as the shape of the incoming tensors is like (x,y,z,num_units)
+                # Since we want to zip together BY unit we need this dimension first
+                # Each index into a transformed_ variable is a different unit of this layer
+                transformed_layer = []
+                transformed_aggregated_layer = []
+                aggregated_layer = []
+
+                # Weight set represents a different set of weights in this layer
+                # E.g. (connections, bias) or (filters, bias)
+                # We first transform each weight set and store these values
+                for weight_set in layer:
+                    transformed_layer.append(weight_set.numpy().T)  # type: ignore
+                # We then loop over the units (now possible thanks to transform) and aggregate!
+                for unit in zip(*transformed_layer):
+                    transformed_aggregated_layer.append(_aggregate(unit, aggregation_method))
+                # Then after aggregation we have to transform back 
+                # This is tricky! Beware the loops within loops below
+                for weight_set_index in range(len(layer)):
+                    # Notice transformed_aggregated_layer has shape like [units, weight_set]
+                    # The above loop handles weight_set indexing, but we need to recombine
+                    # each unit with the loop within the vstack call
+                    # Also notice after we vstack all units back together we transform to get 
+                    # a similar shape to the original layer
+                    weight_set = np.vstack(
+                        [transformed_aggregated_layer[unit_index][weight_set_index]
+                        for unit_index in range(len(transformed_aggregated_layer))]
+                    ).T
+                    # To ensure we don't miss any dimensions of size 1 (e.g. conv filter)
+                    # we now call reshape to force the shapes to be the same
+                    weight_set = tf.reshape(weight_set, layer[weight_set_index].shape)
+                    # And voila! We have aggregated across a unit in this layer!
+                    aggregated_layer.append(weight_set)
+                aggregated_omega.append(aggregated_layer)
+            return aggregated_omega
+
+def threshold_model_by_omega(
     base_model: tf.keras.models.Model,
     omega_matrix: List[List[np.ndarray]],
     threshold_percentage: float,
-    comparison_method: ComparisonMethod
+    comparison_method: ComparisonMethod,
+    aggregation_level: AggregationLevel = AggregationLevel.NO_AGGREGATION,
+    aggregation_method: AggregationMethod = AggregationMethod.MEAN_AVERAGE
     ) -> tf.keras.models.Model:
     """
     Given a base model and some measure of weight importance, create a new model
@@ -42,11 +128,22 @@ def threshold_by_omega(
         comparison_method: ComparisonMethod
             Method for determining actual threshold values i.e. compare weights 
             only within a layer (LAYER_WISE) or across the entire model (MODEL_WISE)
+        aggregation_level: AggregationLevel(Enum):
+            Enum to select how to handle aggregation of weight importances during 
+            threshold. NO_AGGREGATION (default) does not combine weight importances
+            and considers each weight (with importance) individually. UNIT method
+            considers each unit at a time, aggregating the unit weight importances.
+            This means entire units are either kept or not, never partial units.
+        aggregation_method: AggregationMethod(Enum):
+            If aggregation_level is not NO_AGGREGATION this parameter determines how
+            to perform the aggregation. Options include mean average, minimum, maximum
     """
 
     new_model = tf.keras.models.clone_model(base_model)
     threshold_value: np.float32 = np.float32(0)
     
+    omega_matrix = aggregate_omega(omega_matrix, aggregation_level, aggregation_method)  # type: ignore
+
     # If we are comparing across the entire model, do this before thresholds
     if comparison_method == ComparisonMethod.MODEL_WISE:
         flat_omega = []  # type: ignore
@@ -58,27 +155,30 @@ def threshold_by_omega(
         threshold_value = flat_omega[threshold_index].numpy()
         print(f"MODEL_WISE {threshold_value=}")
 
-    for layer_index, (layer_omega, model_layer) in enumerate(zip(omega_matrix, base_model.layers)):
+    for layer_index, (omega_layer, model_layer) in enumerate(zip(omega_matrix, base_model.layers)):
         if comparison_method == ComparisonMethod.LAYER_WISE:
             flat_omega = []  # type: ignore
-            for weight_index, (omega, _) in enumerate(zip(layer_omega, model_layer.weights)):
+            for weight_index, (omega, _) in enumerate(zip(omega_layer, model_layer.weights)):
                 flat_omega = tf.concat([flat_omega, tf.reshape(omega, [-1])], axis=0)
             flat_omega = tf.sort(flat_omega)
             if len(flat_omega)==0:
                 # This is a strange condition
                 # Effectively, Input layers have NO weights, nada, none, []
                 # So we cannot even index into them with threshold_index = 0
+                # but we still need to run the remainder of this loop to 
+                # correctly add the empty array to the new model, so
                 # instead we just hack a value to prevent a crash and move on
                 threshold_value = np.float32(0)
             else:
                 threshold_index = int(len(flat_omega) * threshold_percentage)
                 threshold_value = flat_omega[threshold_index].numpy()
-                print(f"LAYER_WISE {layer_index=} {threshold_value=}")
+                print(f"LAYER_WISE {layer_index=} {model_layer.name} {threshold_value=}")
 
         new_layer_weights = []
-        for weight_index, (omega, weight) in enumerate(zip(layer_omega, model_layer.weights)):
+        for weight_index, (omega, weight) in enumerate(zip(omega_layer, model_layer.weights)):
             new_weight = deepcopy(weight.numpy())
-            new_weight[omega < threshold_value] = 0
+            replacement_array = np.random.normal(np.mean(weight), np.std(weight), weight.shape)
+            new_weight[omega < threshold_value] = replacement_array[omega<threshold_value]
             new_layer_weights.append(new_weight)
         new_model.layers[layer_index].set_weights(new_layer_weights)
 
