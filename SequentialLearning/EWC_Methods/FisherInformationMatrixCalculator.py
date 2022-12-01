@@ -33,7 +33,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         self.samples: int = samples
         self.fisher_matrices: List[List[List[tf.Tensor]]] = []
 
-    def on_train_end(self, logs=None):
+    def generate_fisher_matrix(self):
         # Do fisher calculation
         print(f"{'-'*80}")
         print("STARTING FISHER CALCULATION")

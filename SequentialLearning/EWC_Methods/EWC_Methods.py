@@ -200,6 +200,7 @@ class EWC_Term_Creator():
                 # Original paper: https://arxiv.org/pdf/1612.00796.pdf
                 # type: ignore
                 fisher_calculation_callback: FisherInformationMatrixCalculator = self.callback_dict["FisherCalc"]  # type: ignore
+                omega_matrix = fisher_calculation_callback.generate_fisher_matrix()
                 omega_matrix = fisher_calculation_callback.fisher_matrices[-1]
                 # type: ignore
                 return EWC_Term(ewc_lambda=ewc_lambda, optimal_weights=model_current_weights, omega_matrix=omega_matrix)  # type: ignore
