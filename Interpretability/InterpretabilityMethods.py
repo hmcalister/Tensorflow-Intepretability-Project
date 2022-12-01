@@ -251,6 +251,8 @@ def GRADCAM(
         loss = labels * predictions
     grads = tape.gradient(loss, conv_outputs)
     # Now we have the processed information we can work image by image
+    heatmap_min = []
+    heatmap_max = []
     for index, (image, _) in enumerate(zip(images, labels)):  # type: ignore
         # Output of last conv layer to be scaled by "importance" (gradient)
         output = conv_outputs[index]
@@ -267,11 +269,14 @@ def GRADCAM(
         cam = cv2.resize(np.array(cam), image.shape[0:2])
         # Do some image processing to place CAM as heatmap on top of original image
         heatmap = (cam - cam.min()) / (cam.max() - cam.min())
+        heatmap_min.append(cam.min())
+        heatmap_max.append(cam.max())
         cam = cv2.applyColorMap(np.uint8(255*heatmap), cv2.COLORMAP_JET)  # type: ignore
         color_image = cv2.cvtColor(np.uint8(255*image), cv2.COLOR_GRAY2RGB)  # type: ignore
         gradcam_image = cv2.addWeighted(color_image, 0.5, cam, 0.6, 0)
         gradcam_images.append(gradcam_image)
     
+    print(f"HEATMAP RANGE (EXTREMES): {np.min(heatmap_min)} - {np.max(heatmap_max)}")
     subplot_titles = []
     if show_predictions > 0:
         subplot_titles = [
