@@ -151,7 +151,7 @@ def threshold_model_by_omega(
             for weight_index, omega in enumerate(layer):
                 flat_omega = tf.concat([flat_omega, tf.reshape(omega, [-1])], axis=0)
         flat_omega = tf.sort(flat_omega)
-        threshold_index = int(len(flat_omega) * threshold_percentage)
+        threshold_index = min(int(len(flat_omega) * threshold_percentage), len(flat_omega)-1)
         threshold_value = flat_omega[threshold_index].numpy()
         print(f"MODEL_WISE {threshold_value=}")
 
@@ -170,7 +170,7 @@ def threshold_model_by_omega(
                 # instead we just hack a value to prevent a crash and move on
                 threshold_value = np.float32(0)
             else:
-                threshold_index = int(len(flat_omega) * threshold_percentage)
+                threshold_index = min(int(len(flat_omega) * threshold_percentage), len(flat_omega)-1)
                 threshold_value = flat_omega[threshold_index].numpy()
                 print(f"LAYER_WISE {layer_index=} {model_layer.name} {threshold_value=}")
 
