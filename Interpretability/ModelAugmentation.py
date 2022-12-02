@@ -177,8 +177,9 @@ def threshold_model_by_omega(
         new_layer_weights = []
         for weight_index, (omega, weight) in enumerate(zip(omega_layer, model_layer.weights)):
             new_weight = deepcopy(weight.numpy())
-            replacement_array = np.random.normal(np.mean(weight), np.std(weight), weight.shape)
-            new_weight[omega < threshold_value] = replacement_array[omega<threshold_value]
+            replacement_array = np.random.normal(0, np.std(weight)/10, weight.shape)
+            # replacement_array = np.zeros_like(new_weight)
+            new_weight[omega <= threshold_value] = replacement_array[omega <= threshold_value]
             new_layer_weights.append(new_weight)
         new_model.layers[layer_index].set_weights(new_layer_weights)
 
