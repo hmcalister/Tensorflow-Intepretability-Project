@@ -87,7 +87,7 @@ for task_index in range(len(task_digit_classes)):
         name=f"Task {task_index+1}",
         model=models[task_index],
         model_base_loss=loss_fn,
-        task_digit_labels=task_digit_classes[task_index],
+        task_labels=task_digit_classes[task_index],
         training_batches = training_batches,
         validation_batches = validation_batches,
         batch_size=batch_size
