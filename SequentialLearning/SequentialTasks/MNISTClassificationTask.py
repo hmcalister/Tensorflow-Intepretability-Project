@@ -36,14 +36,14 @@ class MNISTClassificationTask(SequentialTask):
             name: str,
             model: tf.keras.models.Model,
             model_base_loss: tf.keras.losses.Loss,
-            task_digit_labels: List[int],
+            task_labels: List[int],
             training_batches: int = 0,
             validation_batches: int = 0,
             batch_size: int = 32,
             **kwargs,
         ) -> None:
         """
-        Create a new FunctionApproximationTask.
+        Create a new MNIST classification task.
 
         Parameters:
             name: str
@@ -55,7 +55,7 @@ class MNISTClassificationTask(SequentialTask):
             model_base_loss: tf.keras.losses.Loss:
                 The base loss function of the model (before EWC)
 
-            task_digit_labels: List[int]
+            task_labels: List[int]
                 The digits to differentiate in this task
                 Usually a list of two digits (e.g. [0,1]) for binary classification
                 But can be larger (e.g. [0,1,2,3]) for a larger classification task
@@ -79,7 +79,7 @@ class MNISTClassificationTask(SequentialTask):
                 e.g. optional SequentialTask parameters
         """
 
-        self.task_digit_labels = task_digit_labels
+        self.task_labels = task_labels
         self.training_batches = training_batches \
             if training_batches!=0 \
             else int(MNISTClassificationTask.ds_info.splits["train"].num_examples/batch_size)
@@ -102,11 +102,11 @@ class MNISTClassificationTask(SequentialTask):
     def create_datasets(self) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
         """
         Creates (and returns) a tuple of (training_dataset, validation_dataset)
-        based on the Iris dataset
+        based on the MNIST dataset
         """
 
-        filter_range = tf.constant(self.task_digit_labels, dtype=tf.int64)
-        one_hot_depth = len(self.task_digit_labels)
+        filter_range = tf.constant(self.task_labels, dtype=tf.int64)
+        one_hot_depth = len(self.task_labels)
 
         # We need to filter out only the labels we actually want before preprocessing
         training_samples = self.training_batches * self.batch_size
@@ -116,7 +116,7 @@ class MNISTClassificationTask(SequentialTask):
         # This is an ugly hack to map numbers to cardinal values
         # e.g. if task digits are (7,4,5) this loop maps the results to (0,1,2)
         # ideally combine this loop and mapping to the map below (one-hot encoding) but... it works
-        for final_val, init_val in enumerate(self.task_digit_labels):
+        for final_val, init_val in enumerate(self.task_labels):
             final_tensor = tf.constant(final_val, dtype=tf.int64)
             training_dataset = training_dataset.map(lambda x,y: (x, final_tensor if y==init_val else y))
 
@@ -134,7 +134,7 @@ class MNISTClassificationTask(SequentialTask):
             .filter(lambda _, label: tf.reduce_any(tf.equal(label, filter_range)))
 
 
-        for final_val, init_val in enumerate(self.task_digit_labels):
+        for final_val, init_val in enumerate(self.task_labels):
             final_tensor = tf.constant(final_val, dtype=tf.int64)
             validation_dataset = validation_dataset.map(lambda x,y: (x, final_tensor if y==init_val else y))
 
