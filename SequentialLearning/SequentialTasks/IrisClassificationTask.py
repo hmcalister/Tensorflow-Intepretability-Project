@@ -34,7 +34,7 @@ class IrisClassificationTask(SequentialTask):
             **kwargs,
         ) -> None:
         """
-        Create a new FunctionApproximationTask.
+        Create a new IRIS classification task.
 
         Parameters:
             name: str
