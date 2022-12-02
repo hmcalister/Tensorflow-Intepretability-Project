@@ -1,5 +1,5 @@
 # fmt: off
-from typing import List
+from typing import List, Union
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -197,8 +197,11 @@ def GRADCAM(
     images: np.ndarray,
     labels: np.ndarray,
     layer_name:str = None, # type: ignore
+    alpha: float = 0.5,
+    beta: float = 0.5,
     ignore_negative_gradients: bool = False,
-    show_predictions: int = 0): 
+    show_predictions: int = 0,
+    absolute_scale: Union[float, None] = None): 
     """
     Compute GRADCAM over the number of items required.
     Note that data should be a tf.data.Dataset so the class of each image
@@ -217,6 +220,10 @@ def GRADCAM(
         layer_name: str
             The layer from the model to use for GRADCAM
             If layer_name is None (default) then use final conv2D layer instead
+        alpha: float
+            The amount of original image to display (between 0,1)
+        beta: float
+            The amount of heatmap to overlay (between 0,1)
         ignore_negative_gradients: bool
             Boolean to ignore negative gradients
             May give better results but may have no good basis in theory
@@ -224,6 +231,11 @@ def GRADCAM(
             Show model predictions of classes (and true classes) as subplot titles
             Given integer is number of decimal points to round softmax model output to
             If given 0 (default) titles are eschewed
+        absolute_scale: Union[float, None]
+            Float value to use for scaling the heatmap
+            If None (default) then heat map is scaled automatically to fit between 0,1
+            Useful to ensure tiny relative differences are presented on same scale as 
+            large relative differences 
     """
 
     # The input layer of the gradcam model is the input of the original model
@@ -251,8 +263,7 @@ def GRADCAM(
         loss = labels * predictions
     grads = tape.gradient(loss, conv_outputs)
     # Now we have the processed information we can work image by image
-    heatmap_min = []
-    heatmap_max = []
+    heatmax_ranges = []
     for index, (image, _) in enumerate(zip(images, labels)):  # type: ignore
         # Output of last conv layer to be scaled by "importance" (gradient)
         output = conv_outputs[index]
@@ -268,15 +279,22 @@ def GRADCAM(
         # Stretch last conv output to original image size
         cam = cv2.resize(np.array(cam), image.shape[0:2])
         # Do some image processing to place CAM as heatmap on top of original image
-        heatmap = (cam - cam.min()) / (cam.max() - cam.min())
-        heatmap_min.append(cam.min())
-        heatmap_max.append(cam.max())
+        if absolute_scale != None:
+            scale = absolute_scale
+        else:
+            scale = (cam.max() - cam.min())
+        heatmap = (cam - cam.min()) / scale
+        heatmax_ranges.append((cam.max() - cam.min()))
         cam = cv2.applyColorMap(np.uint8(255*heatmap), cv2.COLORMAP_JET)  # type: ignore
-        color_image = cv2.cvtColor(np.uint8(255*image), cv2.COLOR_GRAY2RGB)  # type: ignore
-        gradcam_image = cv2.addWeighted(color_image, 0.5, cam, 0.6, 0)
+        # Handle conversion to color image if not already
+        image = np.uint8(255*image)
+        if image.shape[-1] == 1:  # type: ignore
+            image = cv2.cvtColor(cv2.COLOR_GRAY2RGB)  # type: ignore
+        gradcam_image = cv2.addWeighted(image, alpha, cam, beta, 0)  # type: ignore
         gradcam_images.append(gradcam_image)
     
-    print(f"HEATMAP RANGE (EXTREMES): {np.min(heatmap_min)} - {np.max(heatmap_max)}")
+    print(f"HEATMAP RANGE (EXTREME): {np.max(heatmax_ranges)}")
+    print(f"HEATMAP RANGE (AVG): {np.average(heatmax_ranges)}")
     subplot_titles = []
     if show_predictions > 0:
         subplot_titles = [
