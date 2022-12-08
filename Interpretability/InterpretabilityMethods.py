@@ -234,7 +234,7 @@ def GRADCAM(
     beta: float = 0.5,
     ignore_negative_gradients: bool = False,
     show_predictions: int = 0,
-    absolute_scale: Union[float, None] = None): 
+    absolute_scale: Union[float, None] = None,): 
     """
     Compute GRADCAM over the number of items required.
     Note that data should be a tf.data.Dataset so the class of each image
@@ -268,7 +268,7 @@ def GRADCAM(
             Float value to use for scaling the heatmap
             If None (default) then heat map is scaled automatically to fit between 0,1
             Useful to ensure tiny relative differences are presented on same scale as 
-            large relative differences 
+            large relative differences
     """
 
     # The input layer of the gradcam model is the input of the original model
@@ -322,7 +322,7 @@ def GRADCAM(
         # Handle conversion to color image if not already
         image = np.uint8(255*image)
         if image.shape[-1] == 1:  # type: ignore
-            image = cv2.cvtColor(cv2.COLOR_GRAY2RGB)  # type: ignore
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)  # type: ignore
         gradcam_image = cv2.addWeighted(image, alpha, cam, beta, 0)  # type: ignore
         gradcam_images.append(gradcam_image)
     
