@@ -123,42 +123,64 @@ def _process_occlude_image(
     image: np.ndarray,
     label: np.ndarray,
     patch_size: int,
-    stride: int
+    stride: int,
+    batch_size: int
 ):
-    # Convert the image to something more... manageable
-    # Remove first index (added from tf dataset)
-    # convert to numpy array
+
     sensitivity_map = np.zeros((image.shape[0], image.shape[1]))
     patched_images = []
     patch_value = np.average([np.max(image), np.min(image)])
-    # Loop over every possible position of the occulsion square
-    # note for now the stride is simply the patch size, i.e.
-    # disjoint patches
-    for top_left_y in range(0, image.shape[0],stride):
-        for top_left_x in range(0, image.shape[1],stride):
-            # Copy the original image, apply a square of black over that patch
-            patched_image = np.array(image, copy=True)
-            patched_image[
-                top_left_y:top_left_y+patch_size,
-                top_left_x:top_left_x+patch_size, 
-                : 
-            ] = patch_value
-            # We collect all the patched images together to be processed in a single batch
-            patched_images.append(patched_image)
+    top_left_y = 0
+    top_left_x = 0
+    patch_index = 0
+    prediction_index = 0
+
+    while top_left_y < image.shape[0] - patch_size or top_left_x < image.shape[1]-patch_size:
+        top_left_y = patch_index*stride // (image.shape[0] - patch_size + 1)
+        top_left_x = patch_index*stride % (image.shape[1] - patch_size + 1)
+        print(f"PATCHES PROCESSED {patch_index+1} {top_left_x, top_left_y}", end="\r")
+        # Copy the original image, apply a square of black over that patch
+        patched_image = np.array(image, copy=True)
+        patched_image[
+            top_left_y:top_left_y+patch_size,
+            top_left_x:top_left_x+patch_size, 
+            : 
+        ] = patch_value
+
+        patch_index += 1
+        # We collect all the patched images together to be processed in a single batch
+        patched_images.append(patched_image)
+        if len(patched_images) >= batch_size:
+            patched_images = np.array(patched_images)
+            # Note multiplying by label, we are only interested in 
+            # model predicted likelihood of correct class
+            predictions = model(patched_images) * label # type: ignore
+            # Loop over predictions and apply confidence to the sensitivity map
+            for prediction in predictions:
+                sensitivity_top_left_y = prediction_index*stride // (image.shape[0] - patch_size + 1)
+                sensitivity_top_left_x = prediction_index*stride % (image.shape[1] - patch_size + 1)
+                confidence = np.array(prediction)
+                sensitivity_map[
+                    sensitivity_top_left_y:sensitivity_top_left_y+patch_size,
+                    sensitivity_top_left_x:sensitivity_top_left_x+patch_size,
+                ] = np.max(confidence)
+                prediction_index += 1
+            patched_images = []
     patched_images = np.array(patched_images)
     # Note multiplying by label, we are only interested in 
     # model predicted likelihood of correct class
     predictions = model(patched_images) * label # type: ignore
     # Loop over predictions and apply confidence to the sensitivity map
-    prediction_index = 0
-    for top_left_y in range(0, image.shape[0],stride):
-        for top_left_x in range(0, image.shape[1],stride):
-            confidence = np.array(predictions[prediction_index])
-            sensitivity_map[
-                top_left_y:top_left_y+patch_size,
-                top_left_x:top_left_x+patch_size,
-            ] = np.max(confidence)
-            prediction_index += 1
+    for prediction in predictions:
+        sensitivity_top_left_y = prediction_index*stride // (image.shape[0] - patch_size + 1)
+        sensitivity_top_left_x = prediction_index*stride % (image.shape[1] - patch_size + 1)
+        confidence = np.array(prediction)
+        sensitivity_map[
+            sensitivity_top_left_y:sensitivity_top_left_y+patch_size,
+            sensitivity_top_left_x:sensitivity_top_left_x+patch_size,
+        ] = np.max(confidence)
+        prediction_index += 1
+    print()
     return sensitivity_map
 
 def occlusion_sensitivity(
@@ -166,7 +188,8 @@ def occlusion_sensitivity(
     images: np.ndarray,
     labels: np.ndarray,
     patch_size: int = 3,
-    stride: int = 1):
+    stride: int = 1,
+    occlusion_batch_size: int = 32):
     """
     Compute sensitivity to a series of data points by occluding a section of the image
     Occlusion is shifted across the image, with loss being computed at each step
@@ -188,14 +211,18 @@ def occlusion_sensitivity(
         stride: int
             The amount to move the patch between trials
             Currently unused (stride = patch_size)
+        batch_size: int
+            number of patched images to process at once
+
     """
 
     sensitivity_maps = []
-    for image, label in zip(images, labels):
-        sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride)
+    for i, (image, label) in enumerate(zip(images, labels)):
+        print(f"IMAGE {i+1}/{len(images)}")
+        sensitivity_map = _process_occlude_image(model, image, label, patch_size, stride, occlusion_batch_size)
         sensitivity_maps.append(sensitivity_map)
     # plot_images(images[:num_items])
-    plot_images(sensitivity_maps, figure_title=f"Sensitivity Mappings - {model.name}")
+    plot_images(sensitivity_maps, figure_title=f"Occlusion Sensitivity - {model.name}")
     # TODO Plot sensitivity maps returned and combine with original image...
 
 def GRADCAM(
