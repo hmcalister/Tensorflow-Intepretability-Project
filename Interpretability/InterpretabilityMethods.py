@@ -51,6 +51,7 @@ def kernel_inspection(
         layer_name: str = None,  # type: ignore
         steps:int = 500,
         step_size = 0.01,
+        cmap:str = None  # type: ignore
     ):
     """
     Visualize the convolution filters of a layer from a model
@@ -71,6 +72,9 @@ def kernel_inspection(
         step_size: float
             The influence of each step on the visualisation
             Smaller steps results in longer wait times but more stable visuals
+        cmap: str
+            The color map to use for image plotting
+            Defaults to None
     """
 
     # Target layer of kernel inspection, either user defined or last conv layer
@@ -104,12 +108,14 @@ def kernel_inspection(
             grads = tape.gradient(loss, x)
             normalized_grads = grads/(tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
             x.assign_add( normalized_grads*step_size )
+        # Rescale float to be between 0,1
+        x = (x-tf.math.reduce_min(x)) / (tf.math.reduce_max(x) - tf.math.reduce_min(x))
         filter_results.append(x[0,:,:,:])  # type: ignore
 
     plot_images(filter_results, 
         figure_title=f"Kernel Inspection\n{model.name} - {layer_name}",
         subplot_titles=[f"Filter {i+1}" for i in range(0,len(filter_results))],
-        cmap="gray"
+        cmap=cmap
     )
 
 def _process_occlude_image(
