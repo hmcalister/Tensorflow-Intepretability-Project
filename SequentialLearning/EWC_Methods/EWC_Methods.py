@@ -61,6 +61,19 @@ class EWC_Term():
         self.ewc_lambda = ewc_lambda
         self.optimal_weights = deepcopy(optimal_weights)
         self.omega_matrix = deepcopy(omega_matrix)
+        # max_omega = 0
+        # # Scale omega matrix to have maximum of 1
+        # for layer in self.omega_matrix:
+        #     for weight in layer:
+        #         weight_max = np.max(weight)
+        #         max_omega = max(weight_max, max_omega)
+        # # If condition prevents division by 0
+        # if max_omega != 0:
+        #     for layer_index in range(len(self.omega_matrix)):
+        #         for weight_index in range(len(self.omega_matrix[layer_index])):
+        #             self.omega_matrix[layer_index][weight_index] = \
+        #                 self.omega_matrix[layer_index][weight_index] / max_omega
+        
 
     def calculate_loss(self, model_layers: List[tf.keras.layers.Layer]):
         loss = 0
