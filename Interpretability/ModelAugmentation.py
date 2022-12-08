@@ -163,13 +163,14 @@ def threshold_model_by_omega(
             flat_omega = tf.sort(flat_omega)
             if len(flat_omega)==0:
                 # This is a strange condition
-                # Effectively, Input layers have NO weights, nada, none, []
+                # In short, Input layers have NO weights, nada, none, []
                 # So we cannot even index into them with threshold_index = 0
                 # but we still need to run the remainder of this loop to 
                 # correctly add the empty array to the new model, so
                 # instead we just hack a value to prevent a crash and move on
                 threshold_value = np.float32(0)
             else:
+                # In case we specified 1.0 thresholding, don't run off the end!
                 threshold_index = min(int(len(flat_omega) * threshold_percentage), len(flat_omega)-1)
                 threshold_value = flat_omega[threshold_index].numpy()
                 print(f"LAYER_WISE {layer_index=} {model_layer.name} {threshold_value=}")
