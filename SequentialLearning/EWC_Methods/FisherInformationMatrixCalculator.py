@@ -8,6 +8,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+CLIPPED_STANDARD_DEVIATIONS = 3
+
 class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
     """
     A callback to track tasks and calculate the fisher information matrix when called
@@ -64,15 +66,22 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         # Finally - Fisher matrix is found by variance divided by number of samples
         fisher_diagonal = [tensor / samples for tensor in variance]
 
+        # Here we clip the top few percentile of the weights to avoid massive gradient explosions
+        # flat_fisher = tf.concat([tf.reshape(l, [-1]) for l in fisher_diagonal], axis=0)
+        # fisher_mean = tf.math.reduce_mean(flat_fisher)
+        # fisher_std = tf.math.reduce_std(flat_fisher)
+        # upper_limit = fisher_mean + CLIPPED_STANDARD_DEVIATIONS * fisher_std
+
         # Now we can stop working with flat arrays and convert to layer-collected format
         # But first, convert with these ugly loops
         current_fisher = []
-        index = 0
+        fisher_index = 0
         for layer_index, layer in enumerate(current_task.model.layers):
             current_layer = []
             for tensor_index, tensor in enumerate(layer.weights):
-                current_layer.append(deepcopy(fisher_diagonal[index]))
-                index += 1
+                # f = tf.clip_by_value(tensor, 0, upper_limit)
+                current_layer.append(deepcopy(fisher_diagonal[fisher_index]))
+                fisher_index += 1
             current_fisher.append(current_layer)
         self.fisher_matrices.append(current_fisher)
 
