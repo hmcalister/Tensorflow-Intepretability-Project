@@ -1,8 +1,7 @@
 # fmt: off
-from typing import List, Tuple
-from MyUtils import normalize_img
+from typing import List
 
-from .SequentialTask import SequentialTask
+from .TensorFlowDatasetTask import TensorFlowDatasetTask
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -10,7 +9,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 # fmt: on
 
-class CIFAR10ClassificationTask(SequentialTask):
+class CIFAR10ClassificationTask(TensorFlowDatasetTask):
     """
     Create a new task based around classifying CIFAR10 images 
     The data is taken from tensorflow_datasets and is processed slightly to 
@@ -22,15 +21,7 @@ class CIFAR10ClassificationTask(SequentialTask):
     It is recommended to use CategoricalLoss or BinaryCategoricalLoss
     """
 
-    (full_training_dataset, full_validation_dataset), ds_info = tfds.load(
-            'Cifar10',
-            split=['train', 'test'],
-            shuffle_files=True,
-            as_supervised=True,
-            with_info=True,
-        )
-    full_training_dataset: tf.data.Dataset = full_training_dataset.map(normalize_img,num_parallel_calls=tf.data.AUTOTUNE)
-    full_validation_dataset: tf.data.Dataset = full_validation_dataset.map(normalize_img,num_parallel_calls=tf.data.AUTOTUNE)
+    IMAGE_SIZE = (32,32,3)
 
     def __init__(self, 
             name: str,
@@ -88,72 +79,14 @@ class CIFAR10ClassificationTask(SequentialTask):
                 Anything in this set is optional for this task 
                 e.g. optional SequentialTask parameters
         """
-
-        self.task_labels = task_labels
-        self.training_batches = training_batches \
-            if training_batches!=0 \
-            else int(CIFAR10ClassificationTask.ds_info.splits["train"].num_examples/batch_size)
-        self.validation_batches = validation_batches \
-            if validation_batches!=0 \
-            else int(CIFAR10ClassificationTask.ds_info.splits["test"].num_examples/batch_size)
-        self.batch_size = batch_size
-
-        (training_dataset, validation_dataset) = self.create_datasets()
+        
         super().__init__(
             name = name,
+            dataset_name = "Cifar10",
             model = model,
             model_base_loss = model_base_loss,
-            training_dataset=training_dataset,
+            task_labels=task_labels,
             training_batches = training_batches,
-            validation_dataset=validation_dataset,
             validation_batches = validation_batches,
+            batch_size=batch_size,
             **kwargs)
-
-    def create_datasets(self) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
-        """
-        Creates (and returns) a tuple of (training_dataset, validation_dataset)
-        based on the Fashion MNIST dataset
-        """
-
-        filter_range = tf.constant(self.task_labels, dtype=tf.int64)
-        one_hot_depth = len(self.task_labels)
-
-        # We need to filter out only the labels we actually want before preprocessing
-        training_samples = self.training_batches * self.batch_size
-        training_dataset = CIFAR10ClassificationTask.full_training_dataset \
-            .filter(lambda _, label: tf.reduce_any(tf.equal(label, filter_range)))
-
-        # This is an ugly hack to map numbers to cardinal values
-        # e.g. if task digits are (7,4,5) this loop maps the results to (0,1,2)
-        # ideally combine this loop and mapping to the map below (one-hot encoding) but... it works
-        for final_val, init_val in enumerate(self.task_labels):
-            final_tensor = tf.constant(final_val, dtype=tf.int64)
-            training_dataset = training_dataset.map(lambda x,y: (x, final_tensor if y==init_val else y))
-
-        training_dataset = training_dataset \
-            .map(lambda x,y: (x,tf.one_hot(y, depth=one_hot_depth))) \
-            .take(training_samples) \
-            .shuffle(training_samples) \
-            .batch(self.batch_size) \
-            .repeat() \
-            .prefetch(tf.data.experimental.AUTOTUNE)
-
-        # Repeat the same with validation
-        validation_samples = self.validation_batches * self.batch_size
-        validation_dataset = CIFAR10ClassificationTask.full_validation_dataset \
-            .filter(lambda _, label: tf.reduce_any(tf.equal(label, filter_range)))
-
-
-        for final_val, init_val in enumerate(self.task_labels):
-            final_tensor = tf.constant(final_val, dtype=tf.int64)
-            validation_dataset = validation_dataset.map(lambda x,y: (x, final_tensor if y==init_val else y))
-
-        validation_dataset = validation_dataset \
-            .map(lambda x,y: (x,tf.one_hot(y, depth=one_hot_depth))) \
-            .take(validation_samples) \
-            .shuffle(validation_samples) \
-            .batch(self.batch_size) \
-            .repeat() \
-            .prefetch(tf.data.experimental.AUTOTUNE)
-        
-        return (training_dataset, validation_dataset)
