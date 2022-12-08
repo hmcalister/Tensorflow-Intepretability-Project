@@ -12,8 +12,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-EWC_LAMBDA = 10**-1
-
 
 class SequentialLearningManager():
     """
@@ -61,20 +59,23 @@ class SequentialLearningManager():
                  tasks: List[SequentialTask],
                  epochs: Union[int, List[int]],
                  EWC_method: EWC_Method = EWC_Method.NONE,
-                 log_file_path="logs/Manager.log"):
+                 ewc_lambda: float = 0.0,
+                 log_file_path="logs/Manager.log",):
         """
         Create a new SequentialLearningManager
 
         Parameters:
-            base_model: tf.keras.models.Model
+            :param base_model tf.keras.models.Model:
                 The base model (or more accurately, a model with all shared weights)
-            tasks: List(SequentialTask):
+            :param tasks List(SequentialTask):
                 The list of tasks to learn on (ordered in a list).
                 See SequentialTask class for more details
-            EWC_method:
+            :param EWC_method:
                 Method to calculate elastic weight consolidation importance's
                 Presence also adds EWC term to subsequent loss functions
-            log_file_path: String
+            :param ewc_lambda float:
+                The value of lambda to use for EWC terms
+            :param log_file_path String:
                 The path to the log file to be used
                 Defaults to logs/Manager.log
         """
@@ -86,6 +87,7 @@ class SequentialLearningManager():
         self.training_histories: List[tf.keras.callbacks.History] = []
         self._current_task_index: int = 0
         self.EWC_term_creator = EWC_Term_Creator(EWC_method, base_model, tasks)
+        self.ewc_lambda = ewc_lambda
 
         self.validation_callback = \
             SequentialLearningManager.SequentialValidationCallback(tasks)
@@ -141,11 +143,14 @@ class SequentialLearningManager():
         current_task.model.save(SequentialLearningManager.MODEL_SAVE_BASE_PATH+f"/{current_task.model.name}")
 
         # Create an EWC term for the now completed task
-        self.EWC_terms.append(self.EWC_term_creator.create_term(ewc_lambda=EWC_LAMBDA))
+        self.EWC_terms.append(self.EWC_term_creator.create_term(ewc_lambda=self.ewc_lambda))
         self._current_task_index += 1
 
     def get_training_histories(self):
         return self.training_histories
+
+    def get_validation_data(self):
+        return self.validation_callback.validation_results
 
     def plot_validation_callback_data(self, key:str, title: str="", ylabel: str=""):
         """
