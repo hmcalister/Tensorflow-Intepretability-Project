@@ -12,7 +12,7 @@ import json
 import numpy as np
 from MyUtils import *
 from SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from SequentialLearning.SequentialTasks.MNISTClassificationTask import MNISTClassificationTask
+from SequentialLearning.Tasks.MNISTClassificationTask import MNISTClassificationTask
 from SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os

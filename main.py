@@ -1,7 +1,7 @@
 # fmt: off
 from MyUtils import *
 from SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from SequentialLearning.SequentialTasks.MNISTClassificationTask import MNISTClassificationTask as Task
+from SequentialLearning.Tasks.MNISTClassificationTask import MNISTClassificationTask as Task
 from SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
@@ -14,17 +14,16 @@ model_input_shape = Task.IMAGE_SIZE
 
 # Training parameters
 epochs = 10
-training_batches = 300
-validation_batches = 50
+training_batches = 0
+validation_batches = 0
 batch_size = 32
-ewc_lambda = 1.0
+ewc_lambda = 10000.0
 ewc_method = EWC_Method.FISHER_MATRIX
 
 # Labels to classify in each task
 task_labels = [
-    [0,1],
-    [2,3],
-    [4,5],
+    [0,1,2],
+    [3,4,5]
 ]
 
 # base model for sequential tasks
@@ -32,26 +31,23 @@ task_labels = [
 # i.e. these weights are *shared*
 model_inputs = model_layer = tf.keras.Input(shape=model_input_shape)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_0")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_1")(model_layer)
+model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
+# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_2")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_3")(model_layer)
+model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
+# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_4")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_5")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_6")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_7")(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_9")(model_layer)
+# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+model_layer = tf.keras.layers.Conv2D(32, (3,3), activation="relu", name="conv2d_6")(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
-model_layer = tf.keras.layers.Dense(32, activation="relu")(model_layer)
-model_layer = tf.keras.layers.Dense(32, activation="relu")(model_layer)
+model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
+model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
+model_layer = tf.keras.layers.Dense(3)(model_layer)
 base_model = tf.keras.Model(inputs=model_inputs, outputs=model_layer, name="model")
 
 # Layers specific to each task
 # Not shared
-task_head_layers = [
-    [tf.keras.layers.Dense(2)],
-    [tf.keras.layers.Dense(2)],
-    [tf.keras.layers.Dense(2)],
-]
+task_head_layers = None
 
 # The base loss function for tasks
 # Currently all tasks have the same structure so only one loss
@@ -60,6 +56,15 @@ loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
 print(f"BASE MODEL SUMMARY")
 base_model.summary()
+
+training_image_augmentation = None
+# training_image_augmentation = tf.keras.Sequential([
+#     tf.keras.layers.RandomFlip("horizontal"),
+#     tf.keras.layers.RandomZoom(
+#             height_factor=(-0.05, -0.25),
+#             width_factor=(-0.05, -0.25)),
+#     tf.keras.layers.RandomRotation(0.3)
+# ])
 
 # -----------------------------------------------------------------------------
 # AUTOMATED SETUP: DON'T TOUCH BELOW HERE UNLESS CONFIDENT
@@ -91,7 +96,8 @@ for task_index in range(len(task_labels)):
         task_labels=task_labels[task_index],
         training_batches = training_batches,
         validation_batches = validation_batches,
-        batch_size=batch_size
+        batch_size=batch_size,
+        training_image_augmentation = training_image_augmentation
     ))
 
 
