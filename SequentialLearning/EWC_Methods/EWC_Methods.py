@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import os
 
-from ..SequentialTasks.SequentialTask import SequentialTask
+from ..Tasks.GenericTask import GenericTask
 from .SignFlippingTracker import SignFlippingTracker
 from .MomentumBasedTracker import MomentumBasedTracker
 from .TotalWeightChangeTracker import TotalWeightChangeTracker
@@ -88,7 +88,7 @@ class EWC_Term():
 
 class EWC_Term_Creator():
 
-    def __init__(self, ewc_method: EWC_Method, model: tf.keras.models.Model, tasks: List[SequentialTask]) -> None:
+    def __init__(self, ewc_method: EWC_Method, model: tf.keras.models.Model, tasks: List[GenericTask]) -> None:
         """
         Initialize a new creator for EWC terms
 

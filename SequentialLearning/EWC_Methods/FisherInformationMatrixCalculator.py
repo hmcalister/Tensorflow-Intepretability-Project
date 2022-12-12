@@ -2,7 +2,7 @@
 from copy import deepcopy
 import os
 from typing import List
-from ..SequentialTasks.SequentialTask import SequentialTask
+from ..Tasks.GenericTask import GenericTask
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
@@ -16,7 +16,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
     This class probably doesn't need to be a callback, but it also doesn't hurt if it's needed
     """
 
-    def __init__(self, tasks: List[SequentialTask], samples: int=-1):
+    def __init__(self, tasks: List[GenericTask], samples: int=-1):
         """
         Create a new fisher information callback - creating a new fisher information matrix
         at the end of each task
@@ -30,7 +30,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
                 Defaults to -1, meaning take the entire dataset
         """
         super().__init__()
-        self.tasks: List[SequentialTask] = tasks
+        self.tasks: List[GenericTask] = tasks
         self.current_task_index: int = 0
         self.samples: int = samples
         self.fisher_matrices: List[List[List[tf.Tensor]]] = []
@@ -40,7 +40,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         print(f"{'-'*80}")
         print("STARTING FISHER CALCULATION")
 
-        current_task = self.tasks[self.current_task_index]
+        current_task: GenericTask = self.tasks[self.current_task_index]
         samples = self.samples if self.samples!=-1 else current_task.training_batches
 
         # Notice for this section we work with flattened arrays until the end (for speed)
