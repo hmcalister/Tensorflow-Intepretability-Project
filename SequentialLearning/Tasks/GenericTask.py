@@ -7,10 +7,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-# True for easier debugging
-# False for compiled models, faster train time
-RUN_EAGERLY: bool = False
-
 class GenericTask:
     """
     A container for a single sequential task. 
@@ -27,6 +23,7 @@ class GenericTask:
             validation_dataset: tf.data.Dataset = None,  # type: ignore
             validation_batches: int = 0,
             batch_size: int = 0,
+            run_eagerly: bool = False,
             input_data_fn: Union[Callable, None] = None,
             data_fn: Union[Callable, None] = None,
             x_lim: Union[Tuple[float, float], None] = None,
@@ -58,6 +55,9 @@ class GenericTask:
 
             validation_batches: int
                 The number of batches in the validation dataset
+            
+            run_eagerly: bool
+                Boolean to compile model to tensorflow graph
 
             input_data_fn: function
                 The function used to create this task input data (single independency only)
@@ -71,6 +71,7 @@ class GenericTask:
 
             y_lim: Tuple[float, float]
                 The output limits of the task, for single outputs only
+
         """
 
         self.name = name
@@ -81,6 +82,7 @@ class GenericTask:
         self.validation_dataset = validation_dataset
         self.validation_batches = validation_batches
         self.batch_size = batch_size
+        self.run_eagerly = run_eagerly
         self.input_data_fn = input_data_fn
         self.data_fn = data_fn
         self.x_lim = x_lim
@@ -115,7 +117,7 @@ class GenericTask:
         self.model.compile(optimizer='ADAM',
                 loss=loss_fn,
                 metrics=[self.model_base_loss_as_metric],
-                run_eagerly=RUN_EAGERLY)
+                run_eagerly=self.run_eagerly)
 
     def train_on_task(self, epochs, callbacks: List[tf.keras.callbacks.Callback] = []) -> tf.keras.callbacks.History:
         """

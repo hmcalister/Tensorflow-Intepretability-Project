@@ -12,7 +12,6 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-
 class SequentialLearningManager():
     """
     A manager for sequential learning environments. Takes a model

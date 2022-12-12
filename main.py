@@ -9,6 +9,10 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
+# True for easier debugging
+# False for compiled models, faster train time
+RUN_EAGERLY: bool = True
+
 print(f"GPU: {tf.config.list_physical_devices('GPU')}")
 model_input_shape = Task.IMAGE_SIZE
 
@@ -17,13 +21,13 @@ epochs = 10
 training_batches = 0
 validation_batches = 0
 batch_size = 32
-ewc_lambda = 10000.0
+ewc_lambda = 10.0
 ewc_method = EWC_Method.FISHER_MATRIX
 
 # Labels to classify in each task
 task_labels = [
     [0,1,2],
-    [3,4,5]
+    [3,4,5],
 ]
 
 # base model for sequential tasks
@@ -32,22 +36,24 @@ task_labels = [
 model_inputs = model_layer = tf.keras.Input(shape=model_input_shape)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_0")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
-# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_2")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
-# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_4")(model_layer)
-# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(32, (3,3), activation="relu", name="conv2d_6")(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
-model_layer = tf.keras.layers.Dense(3)(model_layer)
+# model_layer = tf.keras.layers.Dense(2)(model_layer)
 base_model = tf.keras.Model(inputs=model_inputs, outputs=model_layer, name="model")
 
 # Layers specific to each task
 # Not shared
-task_head_layers = None
+task_head_layers = [
+    [tf.keras.layers.Dense(len(labels))] for labels in task_labels
+]
 
 # The base loss function for tasks
 # Currently all tasks have the same structure so only one loss
@@ -97,7 +103,8 @@ for task_index in range(len(task_labels)):
         training_batches = training_batches,
         validation_batches = validation_batches,
         batch_size=batch_size,
-        training_image_augmentation = training_image_augmentation
+        training_image_augmentation = training_image_augmentation,
+        run_eagerly = RUN_EAGERLY
     ))
 
 
