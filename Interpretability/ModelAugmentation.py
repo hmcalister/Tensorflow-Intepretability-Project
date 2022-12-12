@@ -15,7 +15,8 @@ class ComparisonMethod(Enum):
 
 class AggregationLevel(Enum):
     NO_AGGREGATION = 0,
-    UNIT = 1
+    UNIT = 1,
+    CONV_FILTER = 2,
 
 class AggregationMethod(Enum):
     MEAN_AVERAGE = 0,
@@ -42,6 +43,7 @@ def _aggregate(matrices: Sequence[np.ndarray], aggregation_method: AggregationMe
 
 def aggregate_omega(
     omega_matrix: List[List[tf.Variable]],
+    base_model: tf.keras.models.Model,
     aggregation_level: AggregationLevel,
     aggregation_method: AggregationMethod,
     ) -> List[List[tf.Variable]]:
@@ -97,6 +99,25 @@ def aggregate_omega(
                 aggregated_omega.append(aggregated_layer)
             return aggregated_omega
 
+        case AggregationLevel.CONV_FILTER:
+            # Much like UNIT aggregation but this time we only aggregate over conv filters
+            # A conv filter can be checked by looking at the layer instance (conv2d) 
+            # and taking the first set of weights
+            aggregated_omega = []
+
+            for layer_index, layer in enumerate(base_model.layers):
+                omega_layer = omega_matrix[layer_index]
+                aggregated_layer = []
+                if not isinstance(layer, tf.keras.layers.Conv2D):
+                    aggregated_layer = omega_layer
+                else:
+                    # Aggregate only the first weight: much easier than entire unit!
+                    aggregated_filter = _aggregate([omega_layer[0]], aggregation_method) # type: ignore                    
+                    aggregated_layer = [aggregated_filter, omega_layer[1]]
+                aggregated_omega.append(aggregated_layer)
+            return aggregated_omega
+
+
 def threshold_model_by_omega(
     base_model: tf.keras.models.Model,
     omega_matrix: List[List[np.ndarray]],
@@ -142,7 +163,7 @@ def threshold_model_by_omega(
     new_model = tf.keras.models.clone_model(base_model)
     threshold_value: np.float32 = np.float32(0)
     
-    omega_matrix = aggregate_omega(omega_matrix, aggregation_level, aggregation_method)  # type: ignore
+    omega_matrix = aggregate_omega(omega_matrix, base_model, aggregation_level, aggregation_method)  # type: ignore
 
     # If we are comparing across the entire model, do this before thresholds
     if comparison_method == ComparisonMethod.MODEL_WISE:
