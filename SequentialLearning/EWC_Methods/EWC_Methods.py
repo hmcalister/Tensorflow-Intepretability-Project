@@ -49,7 +49,7 @@ class EWC_Term():
 
             optimal_weights: List[List[np.ndarray]]
                 The optimal weights of the model after training.
-                Can be found by model.weights
+                Can be found by model.trainable_weights
                 Note! Should only be the *shared* weights 
 
             omega_matrix: List[List[np.ndarray]]
@@ -81,7 +81,7 @@ class EWC_Term():
             # Note in zip function - if omega is longer than optimal weights the excess omega is ignored
             # This may be an issue if omega and optimal weights are not in the same "position" of the network
             # TODO: Make EWC work better in the case of non-start of network shared weights...
-            for omega, optimal, new in zip(self.omega_matrix[layer_index], self.optimal_weights[layer_index], layer.weights):
+            for omega, optimal, new in zip(self.omega_matrix[layer_index], self.optimal_weights[layer_index], layer.trainable_weights):
                 loss += tf.reduce_sum(omega * tf.math.square(new-optimal))
         return loss * self.ewc_lambda/2
 
@@ -134,7 +134,7 @@ class EWC_Term_Creator():
         omega_matrix = []
         for layer_index, layer in enumerate(self.model_layers):
             model_layer_weights = []
-            for weight_index, weight in enumerate(layer.weights):
+            for weight_index, weight in enumerate(layer.trainable_weights):
                 model_layer_weights.append(weight)
             model_current_weights.append(model_layer_weights)
 
@@ -143,7 +143,7 @@ class EWC_Term_Creator():
                 for layer_index, layer in enumerate(self.model_layers):
                     current_weights = []
                     current_omega = []
-                    for weight_index, weight in enumerate(layer.weights):
+                    for weight_index, weight in enumerate(layer.trainable_weights):
                         current_weights.append(weight)
                         current_omega.append(tf.zeros_like(weight))
                     model_current_weights.append(current_weights)
@@ -156,7 +156,7 @@ class EWC_Term_Creator():
                 for layer_index, layer in enumerate(self.model_layers):
                     current_weights = []
                     current_omega = []
-                    for weight_index, weight in enumerate(layer.weights):
+                    for weight_index, weight in enumerate(layer.trainable_weights):
                         current_weights.append(weight)
                         current_omega.append(tf.ones_like(weight))
                     model_current_weights.append(current_weights)

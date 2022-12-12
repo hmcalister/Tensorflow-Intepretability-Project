@@ -41,7 +41,7 @@ class TotalWeightChangeTracker(WeightTrackingCallback):
         for layer in self.model_layers:
             layer_weights = []
             zeros_like_weights = []
-            for weight in layer.weights:
+            for weight in layer.trainable_weights:
                 layer_weights.append(weight)
                 zeros_like_weights.append(tf.zeros_like(weight))
             # Use exact value of weight for previous weight
@@ -55,7 +55,7 @@ class TotalWeightChangeTracker(WeightTrackingCallback):
         updated_weights = []
         for layer_index, layer in enumerate(self.model_layers):
             layer_weights = []
-            for weight_index, weight in enumerate(layer.weights):
+            for weight_index, weight in enumerate(layer.trainable_weights):
                 # Find the variables we need to calculate new distance traveled
                 previous_weight = self.previous_weights[layer_index][weight_index]
                 # Store new values for update at end

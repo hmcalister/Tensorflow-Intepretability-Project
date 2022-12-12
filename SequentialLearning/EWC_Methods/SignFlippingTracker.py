@@ -41,7 +41,7 @@ class SignFlippingTracker(WeightTrackingCallback):
         for layer in self.model_layers:
             layer_weights = []
             layer_sign_change = []
-            for weight in layer.weights:
+            for weight in layer.trainable_weights:
                 layer_weights.append(weight)
                 layer_sign_change.append(tf.zeros_like(weight))
             self.stored_weights.append(layer_weights)
@@ -52,7 +52,7 @@ class SignFlippingTracker(WeightTrackingCallback):
         for layer_index, layer in enumerate(self.model_layers):
             layer_weights = []
             curr_layer = self.stored_weights[layer_index]
-            for weight_index, weight in enumerate(layer.weights):
+            for weight_index, weight in enumerate(layer.trainable_weights):
                 layer_weights.append(weight)
                 sign_change = tf.sign(weight*curr_layer[weight_index]) == -1
                 self.sign_changes[layer_index][weight_index] += tf.cast(sign_change, dtype=tf.float32)

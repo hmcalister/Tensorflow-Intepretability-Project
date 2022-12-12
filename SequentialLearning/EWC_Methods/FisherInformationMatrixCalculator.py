@@ -45,7 +45,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
 
         # Notice for this section we work with flattened arrays until the end (for speed)
         # init variance to be a zero matrix like all weight tensors of task model
-        variance = [tf.zeros_like(tensor) for tensor in current_task.model.weights]
+        variance = [tf.zeros_like(tensor) for tensor in current_task.model.trainable_weights]
         # Noting gradients, apply model to samples
         step = 0
         # Each loop we get the gradients for a new sample
@@ -57,7 +57,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
                 outputs = current_task.model(x)
                 log_likelihood = tf.math.log(outputs)
             # Finally actually take the gradient and update the variance accordingly
-            gradients = tape.gradient(log_likelihood, current_task.model.weights)
+            gradients = tape.gradient(log_likelihood, current_task.model.trainable_weights)
             variance = [var + (grad ** 2) for var, grad in zip(variance, gradients)]
 
             # Show the current step to keep user updated
@@ -78,7 +78,7 @@ class FisherInformationMatrixCalculator(tf.keras.callbacks.Callback):
         fisher_index = 0
         for layer_index, layer in enumerate(current_task.model.layers):
             current_layer = []
-            for tensor_index, tensor in enumerate(layer.weights):
+            for tensor_index, tensor in enumerate(layer.trainable_weights):
                 # f = tf.clip_by_value(tensor, 0, upper_limit)
                 current_layer.append(deepcopy(fisher_diagonal[fisher_index]))
                 fisher_index += 1
