@@ -11,7 +11,7 @@ import tensorflow as tf
 # False for compiled models, faster train time
 RUN_EAGERLY: bool = False
 
-class SequentialTask:
+class GenericTask:
     """
     A container for a single sequential task. 
     Includes a model (already compiled, hopefully sharing weights with other tasks)

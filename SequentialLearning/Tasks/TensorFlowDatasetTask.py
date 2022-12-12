@@ -3,7 +3,7 @@ import math
 from typing import List, Tuple
 from MyUtils import normalize_img
 
-from .SequentialTask import SequentialTask
+from .GenericTask import GenericTask
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -11,7 +11,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 # fmt: on
 
-class TensorFlowDatasetTask(SequentialTask):
+class TensorFlowDatasetTask(GenericTask):
     """
     An abstract class for tasks created from Tensorflow Datasets
     The data is taken from tensorflow_datasets and is processed slightly to 
@@ -34,6 +34,7 @@ class TensorFlowDatasetTask(SequentialTask):
             validation_split_name: str = "test",
             validation_batches: int = 0,
             batch_size: int = 32,
+            training_image_augmentation: tf.keras.Sequential | None = None,
             **kwargs,
         ) -> None:
         """
@@ -70,6 +71,12 @@ class TensorFlowDatasetTask(SequentialTask):
             batch_size: int
                 The batch size for datasets
                 Defaults to 128.
+            
+            training_image_augmentation: tf.keras.Sequential | None
+                A pipeline to augment the training images before training
+                e.g. add random resizing, zooming, ...
+                See https://pyimagesearch.com/2021/06/28/data-augmentation-with-tf-data-and-tensorflow/
+                If None no augmentation is applied
 
             **kwargs
                 Other keyword arguments to be passed to super()
@@ -81,6 +88,7 @@ class TensorFlowDatasetTask(SequentialTask):
         self.batch_size = batch_size
         self.training_batches = training_batches 
         self.validation_batches = validation_batches
+        self.training_image_augmentation: tf.keras.Sequential = training_image_augmentation
 
         (self.full_training_dataset, self.full_validation_dataset), ds_info = tfds.load(
             dataset_name,
@@ -130,6 +138,9 @@ class TensorFlowDatasetTask(SequentialTask):
             self.training_batches = int(training_samples/self.batch_size)
         else:
             training_samples = self.training_batches * self.batch_size
+
+        if self.training_image_augmentation is not None:
+            training_dataset = training_dataset.map(lambda x,y: (self.training_image_augmentation(x), y))
 
         training_dataset = training_dataset \
             .map(lambda x,y: (x,tf.one_hot(y, depth=one_hot_depth))) \

@@ -1,6 +1,6 @@
 # fmt: off
 
-from .SequentialTasks.SequentialTask import SequentialTask
+from .Tasks.GenericTask import GenericTask
 from .EWC_Methods.EWC_Methods import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ class SequentialLearningManager():
     MODEL_SAVE_BASE_PATH = "models/sequential_models"
 
     class SequentialValidationCallback(tf.keras.callbacks.Callback):
-        def __init__(self, tasks: List[SequentialTask]):
+        def __init__(self, tasks: List[GenericTask]):
             """
             Create a new validation callback, checking model performance 
             on all task each epoch
@@ -56,7 +56,7 @@ class SequentialLearningManager():
             print(f"FINISHED VALIDATION")
 
     def __init__(self, base_model: tf.keras.models.Model,
-                 tasks: List[SequentialTask],
+                 tasks: List[GenericTask],
                  epochs: Union[int, List[int]],
                  EWC_method: EWC_Method = EWC_Method.NONE,
                  ewc_lambda: float = 0.0,
@@ -82,7 +82,7 @@ class SequentialLearningManager():
 
         self.base_model:tf.keras.models.Model = base_model
         self.base_model_layers: List[tf.keras.layers.Layer] = [l for l in base_model.layers]
-        self.tasks: List[SequentialTask] = tasks
+        self.tasks: List[GenericTask] = tasks
         self.EWC_terms: List[EWC_Term] = []
         self.training_histories: List[tf.keras.callbacks.History] = []
         self._current_task_index: int = 0
