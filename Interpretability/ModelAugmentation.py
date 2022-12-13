@@ -179,7 +179,7 @@ def threshold_model_by_omega(
     for layer_index, (omega_layer, model_layer) in enumerate(zip(omega_matrix, base_model.layers)):
         if comparison_method == ComparisonMethod.LAYER_WISE:
             flat_omega = []  # type: ignore
-            for weight_index, (omega, _) in enumerate(zip(omega_layer, model_layer.weights)):
+            for weight_index, (omega, _) in enumerate(zip(omega_layer, model_layer.trainable_weights)):
                 flat_omega = tf.concat([flat_omega, tf.reshape(omega, [-1])], axis=0)
             flat_omega = tf.sort(flat_omega)
             if len(flat_omega)==0:
@@ -197,11 +197,15 @@ def threshold_model_by_omega(
                 print(f"LAYER_WISE {layer_index=} {model_layer.name} {threshold_value=}")
 
         new_layer_weights = []
-        for weight_index, (omega, weight) in enumerate(zip(omega_layer, model_layer.weights)):
-            new_weight = deepcopy(weight.numpy())
-            replacement_array = np.random.normal(0, np.std(weight)/10, weight.shape)
-            # replacement_array = np.zeros_like(new_weight)
-            new_weight[omega <= threshold_value] = replacement_array[omega <= threshold_value]
+        omega_index = 0
+        for weight_index, model_weight in enumerate(model_layer.weights):
+            new_weight = deepcopy(model_weight.numpy())
+            if model_weight.trainable:
+                omega = omega_layer[omega_index]
+                omega_index+=1
+                replacement_array = np.random.normal(0, np.std(model_weight)/10, model_weight.shape)
+                # replacement_array = np.zeros_like(new_weight)
+                new_weight[omega <= threshold_value] = replacement_array[omega <= threshold_value]
             new_layer_weights.append(new_weight)
         new_model.layers[layer_index].set_weights(new_layer_weights)
 
