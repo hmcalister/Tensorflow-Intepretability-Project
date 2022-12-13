@@ -30,15 +30,17 @@ with open(data_file, "x") as f:
 # Digits to classify in each task
 # Should be taken from 0-9
 task_digit_classes = [
-    [0, 1],
-    [2, 3],
-    [4, 5]
+    [0, 1, 2],
+    [4, 5, 6],
 ]
 
-task_head_layers = None
+task_head_layers = [
+    [tf.keras.layers.Dense(len(labels))] for labels in task_digit_classes
+]
+
 
 # Training parameters
-epochs = 5
+epochs = 10
 training_batches = 200
 validation_batches = 50
 batch_size = 32
@@ -46,10 +48,10 @@ ewc_method = EWC_Method.FISHER_MATRIX
 
 # initial binary search parameters
 SEARCH_LOW_PARAM_RANGE = (0, 0)
-SEARCH_HIGH_PARAM_RANGE = (5, 10)
+SEARCH_HIGH_PARAM_RANGE = (50, 100)
 
 # Value which high-low must be smaller than to terminate
-SEARCH_TERMINATION_THRESHOLD = 1
+SEARCH_TERMINATION_THRESHOLD = 10
 
 # Number of steps for each range
 NUM_STEPS = 100
