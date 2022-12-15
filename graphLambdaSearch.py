@@ -3,7 +3,7 @@ import numpy as np
 import json
 import scipy
 
-LEGEND = False
+LEGEND = True
 CURVE = lambda x,a,c,d: a*np.log(x+0.01)+c*x+d
 # CURVE = None
 

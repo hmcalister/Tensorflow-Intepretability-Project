@@ -10,10 +10,10 @@ logger.addHandler(log_file_handler)
 
 import json
 import numpy as np
-from MyUtils import *
-from SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from SequentialLearning.Tasks.MNISTClassificationTask import MNISTClassificationTask
-from SequentialLearning.EWC_Methods.EWC_Methods import *
+from Utilities.Utils import *
+from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
+from Utilities.SequentialLearning.Tasks.MNISTClassificationTask import MNISTClassificationTask
+from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -104,19 +104,21 @@ def create_and_save_base_model():
     # each model gets these layers as a base, then adds own head layers
     # i.e. these weights are *shared*
     model_input_shape = (28, 28, 1)
-    base_model_inputs = base_model_layer = tf.keras.Input(shape=model_input_shape)
-    base_model_layer = tf.keras.layers.Conv2D(12, (3, 3), activation="relu", name="conv2d_0")(base_model_layer)
-    base_model_layer = tf.keras.layers.MaxPool2D((2, 2))(base_model_layer)
-    base_model_layer = tf.keras.layers.Conv2D(12, (3, 3), activation="relu", name="conv2d_1")(base_model_layer)
-    base_model_layer = tf.keras.layers.Conv2D(12, (3, 3), activation="relu", name="conv2d_2")(base_model_layer)
-    base_model_layer = tf.keras.layers.Conv2D(12, (3, 3), activation="relu", name="conv2d_3")(base_model_layer)
-    base_model_layer = tf.keras.layers.Flatten()(base_model_layer)
-    base_model_layer = tf.keras.layers.Dense(10, activation="relu")(base_model_layer)
-    base_model_layer = tf.keras.layers.Dense(2)(base_model_layer)
-    base_model = tf.keras.Model(inputs=base_model_inputs, outputs=base_model_layer, name="base_model")
+    model_inputs = model_layer = tf.keras.Input(shape=model_input_shape)
+    model_layer = tf.keras.layers.Conv2D(32, (3, 3), activation="relu", name="conv2d_0")(model_layer)
+    model_layer = tf.keras.layers.MaxPool2D((2, 2))(model_layer)
+    model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+    model_layer = tf.keras.layers.Conv2D(32, (3, 3), activation="relu", name="conv2d_1")(model_layer)
+    model_layer = tf.keras.layers.Conv2D(64, (3, 3), activation="relu", name="conv2d_2")(model_layer)
+    model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+    model_layer = tf.keras.layers.Conv2D(64, (3, 3), activation="relu", name="conv2d_3")(model_layer)
+    model_layer = tf.keras.layers.Flatten()(model_layer)
+    model_layer = tf.keras.layers.Dense(32, activation="relu")(model_layer)
+    model_layer = tf.keras.layers.Dense(32, activation="relu")(model_layer)
+    model = tf.keras.Model(inputs=model_inputs, outputs=model_layer, name="base_model")
     print(f"BASE MODEL SUMMARY")
-    base_model.summary()
-    base_model.save(MODEL_SAVE_PATH)
+    model.summary()
+    model.save(MODEL_SAVE_PATH)
 
 
 def create_tasks(base_model: tf.keras.models.Model):
