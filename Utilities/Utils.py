@@ -1,5 +1,5 @@
 # fmt: off
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -154,3 +154,56 @@ def multiplot_data(data, xlabels: List = []):
     fig.tight_layout()
     plt.show()
 
+def plot_images(images: List[np.ndarray], 
+    figure_title:str = "", 
+    subplot_titles:List[str]=[], 
+    cmap: str = "viridis",
+    figsize: Tuple[float, float] | None = None,
+    save_plot: str | None = None
+    ):
+    """
+    Plot a series of images in a grid using matplotlib and subplots
+    Useful to show interpretations of different filters in conv-nets
+
+    Parameters:
+        images: List[np.ndarray]
+            The list of images to be plotted
+            Images (items of the array) should be square, etc.. and ar passed directly to imshow
+            The list itself can be any length (even non-square)
+
+        figure_title: str
+            The title of the entire figure
+
+        subplot_titles: List[str]
+            Title each image. Defaults to empty array.
+            If empty, no titles are added
+
+        cmap: str
+            The colour map to use for the images
+            Default is viridis
+        
+        figsize: Tuple[float, float] | None
+            The figure size to plot on. 
+
+        save_plot: str | None
+            Path to save plot
+            If arg is not None then plot is saved to this path and not shown         
+    """
+    total_cols = int(len(images)**0.5)
+    total_rows = len(images) // total_cols
+    if len(images) % total_cols != 0: total_rows += 1
+
+    fig = plt.figure(figsize=figsize)
+    fig.suptitle(figure_title)
+    for i in range(0,len(images)):
+        ax = fig.add_subplot(total_rows, total_cols, i+1)
+        ax.imshow(images[i], cmap=cmap)
+        ax.axis("off")
+        if i < len(subplot_titles):
+            ax.set_title(subplot_titles[i], fontsize=8)
+    plt.tight_layout()
+    if save_plot is None:
+        plt.show()
+    else:
+        plt.savefig(save_plot)
+        plt.clf()

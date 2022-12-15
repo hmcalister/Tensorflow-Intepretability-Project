@@ -3,14 +3,14 @@ from typing import List, Tuple
 import numpy as np
 import pandas as pd
 
-from .SequentialTask import SequentialTask
+from .GenericTask import GenericTask
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-class IrisClassificationTask(SequentialTask):
+class IrisClassificationTask(GenericTask):
     """
     Create a new classification task based on the Iris dataset
     Task consists of some subset of feature columns
@@ -71,7 +71,7 @@ class IrisClassificationTask(SequentialTask):
             **kwargs
                 Other keyword arguments to be passed to super()
                 Anything in this set is optional for this task 
-                e.g. optional SequentialTask parameters
+                e.g. optional GenericTask parameters
         """
 
         self.feature_column_names = feature_column_names

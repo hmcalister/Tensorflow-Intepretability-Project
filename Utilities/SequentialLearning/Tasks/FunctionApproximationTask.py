@@ -1,14 +1,14 @@
 # fmt: off
 from typing import Callable, Tuple
 import numpy as np
-from .SequentialTask import SequentialTask
+from .GenericTask import GenericTask
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-class FunctionApproximationTask(SequentialTask):
+class FunctionApproximationTask(GenericTask):
     """
     A task about modelling a function that maps inputs (independent variables) to outputs
     Functions are the data functions, and (if independent variables != model_input_shape)
@@ -72,7 +72,7 @@ class FunctionApproximationTask(SequentialTask):
             **kwargs
                 Other keyword arguments to be passed to super()
                 Anything in this set is optional for this task 
-                e.g. optional SequentialTask parameters
+                e.g. optional GenericTask parameters
         """
 
         self.model_input_shape = model_input_shape

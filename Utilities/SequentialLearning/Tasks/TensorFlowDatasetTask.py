@@ -1,7 +1,7 @@
 # fmt: off
 import math
 from typing import List, Tuple
-from MyUtils import normalize_img
+from Utilities.Utils import normalize_img
 
 from .GenericTask import GenericTask
 
@@ -55,10 +55,6 @@ class TensorFlowDatasetTask(GenericTask):
                 The classes to differentiate in this task
                 Usually a list of two digits (e.g. [0,1]) for binary classification
                 But can be larger (e.g. [0,1,2,3]) for a larger classification task
-                Must be in the valid range of data labels, i.e. 0-2
-                    0 Healthy
-                    1 Angular Leaf Spot
-                    2 Bean Rust
 
             training_batches: int
                 The number of batches in the training dataset

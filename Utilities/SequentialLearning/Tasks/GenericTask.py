@@ -99,7 +99,7 @@ class GenericTask:
         self.compile_model(model_base_loss)
 
 
-    def compile_model(self, loss_fn: tf.keras.losses.Loss):
+    def compile_model(self, loss_fn: tf.keras.losses.Loss, **kwargs):
         """
         (Re)compile this tasks model with a new loss function, keeping the metrics
         """
@@ -114,10 +114,13 @@ class GenericTask:
         # this is not possible with a compiled graph (Tensorflow restricts it)
         # So we must set run_eagerly to True to avoid compilation, or
         # we can use .weights and use tensorflow Tensors instead!
-        self.model.compile(optimizer='ADAM',
+        if "optimizer" not in kwargs:
+            kwargs["optimizer"] = "ADAM"
+        self.model.compile(
                 loss=loss_fn,
                 metrics=[self.model_base_loss_as_metric],
-                run_eagerly=self.run_eagerly)
+                run_eagerly=self.run_eagerly,
+                **kwargs)
 
     def train_on_task(self, epochs, callbacks: List[tf.keras.callbacks.Callback] = []) -> tf.keras.callbacks.History:
         """

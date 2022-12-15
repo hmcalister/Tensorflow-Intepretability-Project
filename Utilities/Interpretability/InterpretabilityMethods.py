@@ -1,5 +1,6 @@
 # fmt: off
-from typing import List, Union
+from typing import List, Tuple, Union
+from Utilities.Utils import plot_images
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -9,7 +10,17 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-def plot_images(images: List[np.ndarray], figure_title:str = "", subplot_titles:List[str]=[], cmap: str = "viridis"):
+def find_last_conv_layer(model:tf.keras.models.Model) -> tf.keras.layers.Conv2D:
+    last_conv_layer = None
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.layers.Conv2D):
+            last_conv_layer = layer
+        if isinstance(layer, tf.keras.models.Model):
+            submodel_last_conv_layer = find_last_conv_layer(layer)
+            if submodel_last_conv_layer is not None:
+                last_conv_layer = submodel_last_conv_layer
+    return last_conv_layer
+
     """
     Plot a series of images in a grid using matplotlib and subplots
     Useful to show interpretations of different filters in conv-nets
@@ -47,11 +58,36 @@ def plot_images(images: List[np.ndarray], figure_title:str = "", subplot_titles:
     plt.show()
 
 def kernel_inspection(
+def _process_filter(
+        submodel: tf.keras.models.Model,
+        filter_index: int,
+        steps: int,
+        step_size: float
+    ):
+    # Get input shape and replace None (batch placeholder) with 1
+    noise_shape = submodel.input_shape
+    noise_shape = (1, *noise_shape[1:])
+    x: tf.Variable = tf.Variable(tf.cast(np.random.random(noise_shape), tf.float32))
+    for _ in range(steps):
+        with tf.GradientTape() as tape:
+            y: tf.Tensor = submodel(x)  # type: ignore
+            loss = tf.reduce_mean(y[:,:,:,filter_index])  # type: ignore
+        grads = tape.gradient(loss, x)
+        normalized_grads = grads/(tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
+        x.assign_add( normalized_grads*step_size )
+    # Rescale float to be between 0,1
+    x = (x-tf.math.reduce_min(x)) / (tf.math.reduce_max(x) - tf.math.reduce_min(x))
+    return x
+    
+def kernel_activations(
         model: tf.keras.Model,
         layer_name: str = None,  # type: ignore
         steps:int = 500,
         step_size = 0.01,
-        cmap:str = None  # type: ignore
+        cmap:str = None,  # type: ignore
+        filters_per_plot:int=None, #type: ignore
+        save_path: str | None= None,
+        **kwargs
     ):
     """
     Visualize the convolution filters of a layer from a model
@@ -75,6 +111,16 @@ def kernel_inspection(
         cmap: str
             The color map to use for image plotting
             Defaults to None
+        max_filters: int
+            The maximum number of filters to display in one plot
+            If 0 (default) display all filters
+            Notice last plot will have remainder of filters
+            (probably fewer than max_filters)
+        save_path: str | None
+            If present plots are saved (not shown) to the path
+            Note save_path should point to a directory into which
+            figures will be saved
+
     """
 
     # Target layer of kernel inspection, either user defined or last conv layer
@@ -83,9 +129,8 @@ def kernel_inspection(
        target_layer = model.get_layer(layer_name)
     # if no layer name specified, just get last conv layer by iterating over all layers
     if layer_name is None:
-        for layer in model.layers:
-            if isinstance(layer, tf.keras.layers.Conv2D):
-                target_layer = layer
+        target_layer = find_last_conv_layer(model)
+        layer_name = target_layer.name
     print(f"OPERATING ON {target_layer.name}")
 
     submodel = tf.keras.models.Model(
@@ -93,30 +138,36 @@ def kernel_inspection(
         [target_layer.output]
     )
 
+    if filters_per_plot is None:
+        filters_per_plot = target_layer.filters
+
     filter_results = []
     # Get input shape and replace None (batch placeholder) with 1
     noise_shape = submodel.input_shape
     noise_shape = (1, *noise_shape[1:])
-    for filter_index in range(target_layer.filters):
-        print(f"OPERATING ON FILTER: {filter_index+1}/{target_layer.filters}", end="\r")
-        # Make random noise the layer can use
-        x: tf.Variable = tf.Variable(tf.cast(np.random.random(noise_shape), tf.float32))
-        for _ in range(steps):
-            with tf.GradientTape() as tape:
-                y: tf.Tensor = submodel(x)  # type: ignore
-                loss = tf.reduce_mean(y[:,:,:,filter_index])  # type: ignore
-            grads = tape.gradient(loss, x)
-            normalized_grads = grads/(tf.sqrt(tf.reduce_mean(tf.square(grads))) + 1e-5)
-            x.assign_add( normalized_grads*step_size )
-        # Rescale float to be between 0,1
-        x = (x-tf.math.reduce_min(x)) / (tf.math.reduce_max(x) - tf.math.reduce_min(x))
+    for filter_index in range(1, target_layer.filters+1):
+        print(f"OPERATING ON FILTER: {filter_index}/{target_layer.filters}", end="\r")
+        x = _process_filter(submodel, filter_index-1, steps, step_size)
         filter_results.append(x[0,:,:,:])  # type: ignore
 
-    plot_images(filter_results, 
-        figure_title=f"Kernel Inspection\n{model.name} - {layer_name}",
-        subplot_titles=[f"Filter {i+1}" for i in range(0,len(filter_results))],
-        cmap=cmap
-    )
+        if filter_index % filters_per_plot == 0 or filter_index == target_layer.filters:
+            if save_path is not None:
+                im_path = f"{save_path}/{target_layer.name}-KernelActivation{filter_index-len(filter_results)}-{filter_index}.png"
+            else: 
+                im_path = None
+            plot_images(filter_results, 
+                figure_title=f"Kernel Activations\n{model.name} - {layer_name}",
+                subplot_titles=[f"Filter {i+1}" for i in range(filter_index-len(filter_results),filter_index)],
+                cmap=cmap,
+                save_plot=im_path,
+                **kwargs
+            )
+
+            filter_results = []
+            # Get input shape and replace None (batch placeholder) with 1
+            noise_shape = submodel.input_shape
+            noise_shape = (1, *noise_shape[1:])
+    print()
 
 def _process_occlude_image(
     model: tf.keras.Model,
@@ -276,14 +327,13 @@ def GRADCAM(
     # We also need the original model output
     original_output = model.output
     # the gradcam output is trickier, either specified layer or final conv layer
-    gradcam_output_layer: tf.keras.layers.Layer
+    gradcam_output_layer: tf.keras.layers.Layer = None # type: ignore
     if layer_name is not None:
        gradcam_output_layer = model.get_layer(layer_name)
     # if no layer name specified, just get last conv layer by iterating over all layers
-    if layer_name is None:
-        for layer in model.layers:
-            if isinstance(layer, tf.keras.layers.Conv2D):
-                gradcam_output_layer = layer
+    else:
+        gradcam_output_layer = find_last_conv_layer(model)
+    assert gradcam_output_layer is not None 
     
     # Create the new gradcam model combining inputs
     gradcam_model = tf.keras.models.Model([original_inputs], [gradcam_output_layer.output, original_output])
