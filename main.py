@@ -1,8 +1,8 @@
 # fmt: off
-from MyUtils import *
-from SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from SequentialLearning.Tasks.MNISTClassificationTask import MNISTClassificationTask as Task
-from SequentialLearning.EWC_Methods.EWC_Methods import *
+from Utilities.Utils import *
+from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
+from Utilities.SequentialLearning.Tasks.Stl10ClassificationTask import Stl10ClassificationTask as Task
+from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -11,13 +11,13 @@ import tensorflow as tf
 
 # True for easier debugging
 # False for compiled models, faster train time
-RUN_EAGERLY: bool = True
+RUN_EAGERLY: bool = False
 
 print(f"GPU: {tf.config.list_physical_devices('GPU')}")
 model_input_shape = Task.IMAGE_SIZE
 
 # Training parameters
-epochs = 10
+epochs = 100
 training_batches = 0
 validation_batches = 0
 batch_size = 32
@@ -34,19 +34,21 @@ task_labels = [
 # each model gets these layers as a base, then adds own head layers
 # i.e. these weights are *shared*
 model_inputs = model_layer = tf.keras.Input(shape=model_input_shape)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_0")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_0")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_1")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_2")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_2")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_3")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(16, (3,3), activation="relu", name="conv2d_4")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_4")(model_layer)
+model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_5")(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(32, (3,3), activation="relu", name="conv2d_6")(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
-# model_layer = tf.keras.layers.Dense(2)(model_layer)
 base_model = tf.keras.Model(inputs=model_inputs, outputs=model_layer, name="model")
 
 # Layers specific to each task
@@ -64,13 +66,13 @@ print(f"BASE MODEL SUMMARY")
 base_model.summary()
 
 training_image_augmentation = None
-# training_image_augmentation = tf.keras.Sequential([
-#     tf.keras.layers.RandomFlip("horizontal"),
-#     tf.keras.layers.RandomZoom(
-#             height_factor=(-0.05, -0.25),
-#             width_factor=(-0.05, -0.25)),
-#     tf.keras.layers.RandomRotation(0.3)
-# ])
+training_image_augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    tf.keras.layers.RandomZoom(
+            height_factor=(-0.05, -0.25),
+            width_factor=(-0.05, -0.25)),
+    tf.keras.layers.RandomRotation(0.5)
+])
 
 # -----------------------------------------------------------------------------
 # AUTOMATED SETUP: DON'T TOUCH BELOW HERE UNLESS CONFIDENT
