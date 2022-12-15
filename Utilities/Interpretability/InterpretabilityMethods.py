@@ -21,43 +21,64 @@ def find_last_conv_layer(model:tf.keras.models.Model) -> tf.keras.layers.Conv2D:
                 last_conv_layer = submodel_last_conv_layer
     return last_conv_layer
 
+def kernel_inspection(
+    model: tf.keras.Model,
+    layer_name: str | None = None,
+    filters_per_plot:int | None = None,
+    save_path: str | None= None,
+    **kwargs
+):
     """
-    Plot a series of images in a grid using matplotlib and subplots
-    Useful to show interpretations of different filters in conv-nets
+    Plot the filters from a given layer
 
     Parameters:
-        images: List[np.ndarray]
-            The list of images to be plotted
-            Images (items of the array) should be square, etc.. and ar passed directly to imshow
-            The list itself can be any length (even non-square)
-
-        figure_title: str
-            The title of the entire figure
-
-        subplot_titles: List[str]
-            Title each image. Defaults to empty array.
-            If empty, no titles are added
-
-        cmap: str
-            The colour map to use for the images
-            Default is viridis 
+        model: tf.keras.Model
+            The model to sample layers from
+        layer_name: str
+            The layer from the model to use for kernel inspection
+            If layer_name is None (default) then use final conv2D layer instead
+        max_filters: int
+            The maximum number of filters to display in one plot
+            If 0 (default) display all filters
+            Notice last plot will have remainder of filters
+            (probably fewer than max_filters)
+        save_path: str | None
+            If present plots are saved (not shown) to the path
+            Note save_path should point to a directory into which
+            figures will be saved
     """
-    total_cols = int(len(images)**0.5)
-    total_rows = len(images) // total_cols
-    if len(images) % total_cols != 0: total_rows += 1
+    # Target layer of kernel inspection, either user defined or last conv layer
+    target_layer: tf.keras.layers.Layer = None # type: ignore
+    if layer_name is not None:
+       target_layer = model.get_layer(layer_name)
+    # if no layer name specified, just get last conv layer by iterating over all layers
+    if layer_name is None:
+        target_layer = find_last_conv_layer(model)
+        layer_name = target_layer.name
+    print(f"OPERATING ON {target_layer.name}")
 
-    fig = plt.figure()
-    fig.suptitle(figure_title)
-    for i in range(0,len(images)):
-        ax = fig.add_subplot(total_rows, total_cols, i+1)
-        ax.imshow(images[i], cmap=cmap)
-        ax.axis("off")
-        if i < len(subplot_titles):
-            ax.set_title(subplot_titles[i], fontsize=8)
-    plt.tight_layout()
-    plt.show()
+    if filters_per_plot is None:
+        filters_per_plot = target_layer.filters
+    
+    filter_results = []
+    for filter_index in range(1, target_layer.filters+1):
+        current_filter = target_layer.weights[0][:,:,:,filter_index-1] + target_layer.weights[1][filter_index-1]
+        current_filter = (current_filter - tf.math.reduce_min(current_filter)) / (tf.math.reduce_max(current_filter) - tf.math.reduce_min(current_filter))
+        filter_results.append(current_filter)
+        if filter_index % filters_per_plot == 0 or filter_index == target_layer.filters:
+            if save_path is not None:
+                im_path = f"{save_path}/{target_layer.name}-Kernel{filter_index-len(filter_results)}-{filter_index}.png"
+            else: 
+                im_path = None
+            plot_images(filter_results, 
+                figure_title=f"Kernel Inspection\n{model.name} - {layer_name}",
+                subplot_titles=[f"Filter {i+1}" for i in range(filter_index-len(filter_results),filter_index)],
+                save_plot=im_path,
+                **kwargs
+            )
 
-def kernel_inspection(
+            filter_results = []
+
 def _process_filter(
         submodel: tf.keras.models.Model,
         filter_index: int,
