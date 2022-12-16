@@ -1,7 +1,7 @@
 # fmt: off
 from Utilities.Utils import *
 from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from Utilities.SequentialLearning.Tasks.Stl10ClassificationTask import Stl10ClassificationTask as Task
+from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
@@ -17,7 +17,7 @@ print(f"GPU: {tf.config.list_physical_devices('GPU')}")
 model_input_shape = Task.IMAGE_SIZE
 
 # Training parameters
-epochs = 100
+epochs = 10
 training_batches = 0
 validation_batches = 0
 batch_size = 32
@@ -26,8 +26,8 @@ ewc_method = EWC_Method.FISHER_MATRIX
 
 # Labels to classify in each task
 task_labels = [
-    [0,1,2],
-    [3,4,5],
+    [0,1],
+    [2,3],
 ]
 
 # base model for sequential tasks
@@ -45,7 +45,8 @@ model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_4")(model_layer)
 model_layer = tf.keras.layers.Conv2D(20, (3,3), activation="relu", name="conv2d_5")(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(32, (3,3), activation="relu", name="conv2d_6")(model_layer)
+model_layer = tf.keras.layers.GlobalMaxPool2D()(model_layer)
+# model_layer = tf.keras.layers.Conv2D(32, (3,3), activation="relu", name="conv2d_6")(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
