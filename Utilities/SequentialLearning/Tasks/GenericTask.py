@@ -91,8 +91,8 @@ class GenericTask:
         self.model_base_loss.name = "base_loss"
         model_base_loss_serialized: dict = deepcopy(tf.keras.losses.serialize(self.model_base_loss))  # type: ignore
         # remove objects that metric cannot understand
-        del(model_base_loss_serialized["config"]["reduction"])
-        del(model_base_loss_serialized["config"]["axis"])
+        model_base_loss_serialized["config"].pop("reduction", None)
+        model_base_loss_serialized["config"].pop("axis", None)
         self.model_base_loss_as_metric = tf.keras.metrics.deserialize(model_base_loss_serialized)
                 
 
