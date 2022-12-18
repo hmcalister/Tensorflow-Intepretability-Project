@@ -82,17 +82,18 @@ class FunctionApproximationTask(GenericTask):
         self.training_samples = training_batches * batch_size
         self.validation_samples = validation_batches * batch_size
 
+        self.input_data_fn = input_data_fn
+        self.data_fn = data_fn
+        self.x_lim = x_lim
+
         super().__init__(
             name = name,
             model = model,
             model_base_loss = model_base_loss,
-            input_data_fn = input_data_fn,
-            data_fn = data_fn,
             training_dataset=self.create_dataset(training_batches * batch_size),
             training_batches = training_batches,
             validation_dataset=self.create_dataset(validation_batches * batch_size),
             validation_batches = validation_batches,
-            x_lim = x_lim,
             **kwargs)
 
         # Set typing correctly

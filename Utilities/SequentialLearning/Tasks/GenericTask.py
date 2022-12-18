@@ -58,20 +58,6 @@ class GenericTask:
             
             run_eagerly: bool
                 Boolean to compile model to tensorflow graph
-
-            input_data_fn: function
-                The function used to create this task input data (single independency only)
-
-            data_fn: function
-                The function used to map inputs to outputs (if applicable)
-                NOT only single independent variable
-
-            x_lim: Tuple[float, float]
-                The input limits of this task, if applicable (single independent variable only)
-
-            y_lim: Tuple[float, float]
-                The output limits of the task, for single outputs only
-
         """
 
         self.name = name
@@ -83,10 +69,6 @@ class GenericTask:
         self.validation_batches = validation_batches
         self.batch_size = batch_size
         self.run_eagerly = run_eagerly
-        self.input_data_fn = input_data_fn
-        self.data_fn = data_fn
-        self.x_lim = x_lim
-        self.y_lim = y_lim
 
         self.model_base_loss.name = "base_loss"
         model_base_loss_serialized: dict = deepcopy(tf.keras.losses.serialize(self.model_base_loss))  # type: ignore
