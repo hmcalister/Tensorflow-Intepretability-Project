@@ -155,7 +155,7 @@ class SequentialLearningManager():
         """
         Plot the data from the validation callback
         Possible keys are any metric name or 'loss', e.g.
-        key is in the set {"loss", "base_loss"} 
+        key is in the set {"loss", "base_loss", "val_loss", "val_base_loss"} 
         """
 
         data = self.validation_callback.validation_results[key]
