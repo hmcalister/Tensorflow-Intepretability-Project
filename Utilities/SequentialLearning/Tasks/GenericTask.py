@@ -75,9 +75,7 @@ class GenericTask:
         # remove objects that metric cannot understand
         model_base_loss_serialized["config"].pop("reduction", None)
         model_base_loss_serialized["config"].pop("axis", None)
-        self.model_base_loss_as_metric = tf.keras.metrics.deserialize(model_base_loss_serialized)
-                
-
+        self.model_base_loss_as_metric: tf.keras.metrics.Metric = tf.keras.metrics.deserialize(model_base_loss_serialized) # type: ignore
         self.compile_model(model_base_loss)
 
 
@@ -127,7 +125,7 @@ class GenericTask:
 
         if self.validation_dataset is None:
             return {}
-            
+        self.model_base_loss_as_metric.reset_state()
         # Return type of this is hinted incorrectly
         # Actual return type is dict
         print(f"EVALUATING: {self.model.name}")
