@@ -120,6 +120,7 @@ class IntelNaturalScenesClassificationTask(GenericTask):
             validation_split=0,
             batch_size=None, #type: ignore
             label_mode="int",
+            image_size=self.IMAGE_SIZE
         )
 
         filter_range = tf.constant(self.task_labels, dtype=tf.int32)
@@ -162,6 +163,7 @@ class IntelNaturalScenesClassificationTask(GenericTask):
             validation_split=0,
             batch_size=None, #type: ignore
             label_mode="int",
+            image_size=self.IMAGE_SIZE
         )
         # Repeat the same with validation
         validation_dataset = validation_dataset \
