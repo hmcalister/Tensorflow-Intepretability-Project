@@ -72,7 +72,7 @@ training_image_augmentation = tf.keras.Sequential([
     tf.keras.layers.RandomZoom(
             height_factor=(-0.05, -0.25),
             width_factor=(-0.05, -0.25)),
-    tf.keras.layers.RandomRotation(0.5)
+    tf.keras.layers.RandomRotation(0.15)
 ])
 
 # -----------------------------------------------------------------------------
