@@ -47,7 +47,7 @@ images = images[:16]
 labels = labels[:16]
 plot_images(images)
 
-MODEL_SAVE_PATH = "models/VGG16_transfer"
+MODEL_SAVE_PATH = "models/transfer_intel"
 training_loop = 0
 history_save_path = "history.csv"
 all_history_df = pd.DataFrame()
