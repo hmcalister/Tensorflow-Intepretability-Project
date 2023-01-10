@@ -1,8 +1,7 @@
 # fmt: off
-from typing import List, Tuple, Union
+from typing import Union
 from Utilities.Utils import plot_images
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2
 
 import os
@@ -405,3 +404,70 @@ def GRADCAM(
             f"Label: {l}\nPrediction\n{np.around(tf.nn.softmax(p), show_predictions)}" for l, p in zip(labels, predictions)
         ]
     plot_images(gradcam_images, figure_title=f"GRADCAM\n{model.name} - {layer_name}", subplot_titles=subplot_titles)
+
+def maximal_class_activations(
+    model: tf.keras.Model,
+    steps = 1000,
+    step_size = 0.01
+    ):
+    """
+    Starting with a set of random inputs, compute back propagation through the network
+    for a number of steps such that each input incrementally walks towards an input that
+    activates a respective class the most.
+
+    For example, using MNIST, this method would take a network trained on the dataset with 10 outputs
+    (one for each class) and produce 10 images. The first image would be an image that most activates
+    the network for the first output (the digit 0). 
+
+    This method may tend to yield "adversarial examples": inputs that activate classes a lot but do not 
+    have the intended structure. This method works best on small, simple inputs (e.g. MNIST over BEANS)
+
+    Parameters:
+        model: tf.keras.Model
+            The model to find class maximization of
+        steps: int
+            The number of steps to take. More steps takes longer but tends to produce better results
+        step_size: float
+            The contribution of each step to the inputs. A smaller step size will be more stable but may take more steps
+    """
+
+    # This implementation processes all classes at once
+    # This leads to moderately complex code but very efficient performance, especially on a GPU
+
+    # Noise has same base shape as image inputs. This is found by model input shape
+    noise_shape = model.input_shape
+    # The expected number of classes is the number of outputs of the model
+    # First index as output shape is (batch_size, num_classes)
+    num_classes = model.output_shape[1]
+    # Actual noise shape is batch size with remaining noise shape
+    noise_shape = (num_classes, *noise_shape[1:])
+    # For later we also store the expected shape of the gradients
+    # This is (num_classes) then 1 in all remaining positions
+    # This makes the division of gradients have the correct shape later
+    grads_shape = (num_classes, *[1 for _ in noise_shape[1:]])
+
+    x: tf.Variable = tf.Variable(tf.cast(np.random.random(noise_shape), tf.float32))
+    for step_index in range(steps):
+        print(f"STEP {step_index+1}/{steps}", end="\r")
+        with tf.GradientTape() as tape:
+            # Here we multiply by the identity matrix given by tf.eye 
+            # This means we only maximize a single class, not every class!
+            loss: tf.Tensor = model(x)*tf.eye(num_classes)  # type: ignore
+        grads = tape.gradient(loss, x)
+        # We average the squared gradients over the "image" dimensions (1,2,3)
+        # We do NOT average over the batch size dimension (0)
+        # This means we effectively process the classes separately but in parallel
+        # We also reshape the result to have a series of dimension 1 to match the original grads
+        average_grads = tf.reshape(tf.sqrt(tf.reduce_mean(tf.square(grads), axis=[1,2,3])), grads_shape)
+        normalized_grads = grads/(average_grads + 1e-5)
+        x.assign_add( normalized_grads*step_size )
+    # We remap images to have min/max of 0-1
+    x = (x-tf.math.reduce_min(x)) / (tf.math.reduce_max(x) - tf.math.reduce_min(x))
+    # Then we map this into a list for ease of use
+    class_images = [x[i,:,:,:] for i in range(num_classes)] # type: ignore
+
+    plot_images(class_images)
+    outputs=tf.nn.softmax(model(tf.convert_to_tensor(class_images)), axis=0)
+    best_predictions = tf.argmax(outputs, axis=0)
+    for i, (prediction, confidence) in enumerate(zip(best_predictions, outputs)):
+        print(f"CLASS {i}:\n\tModel Prediction: {prediction}\n\tConfidence: {confidence[i]}")
