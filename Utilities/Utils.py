@@ -206,4 +206,6 @@ def plot_images(images: List[np.ndarray],
         plt.show()
     else:
         plt.savefig(save_plot)
+        plt.cla()
         plt.clf()
+        plt.close()
