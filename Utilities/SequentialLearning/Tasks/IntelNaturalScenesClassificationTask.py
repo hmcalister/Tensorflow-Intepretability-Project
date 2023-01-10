@@ -20,7 +20,7 @@ class IntelNaturalScenesClassificationTask(GenericTask):
     https://www.kaggle.com/datasets/puneet6060/intel-image-classification
     """
 
-    IMAGE_SIZE = (None,None,3)
+    IMAGE_SIZE = (150,150,3)
 
     def __init__(self, 
             name: str,
