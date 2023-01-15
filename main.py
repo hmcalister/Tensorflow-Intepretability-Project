@@ -1,7 +1,7 @@
 # fmt: off
-from Utilities.Utils import *
+from Utilities import *
 from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from Utilities.SequentialLearning.Tasks.CIFAR10ClassificationTask import CIFAR10ClassificationTask as Task
+from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
@@ -27,7 +27,7 @@ ewc_method = EWC_Method.FISHER_MATRIX
 
 # Labels to classify in each task
 task_labels = [
-    [i for i in range(10)],
+    [2,3],
 ]
 
 # base model for sequential tasks
@@ -54,9 +54,6 @@ model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d
 model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_11")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_12")(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_13")(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_14")(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer) 
 model_layer = tf.keras.layers.Dense(64, activation="relu")(model_layer)
@@ -76,13 +73,13 @@ print(f"BASE MODEL SUMMARY")
 base_model.summary()
 
 training_image_augmentation = None
-training_image_augmentation = tf.keras.Sequential([
-    tf.keras.layers.RandomFlip("horizontal"),
-    tf.keras.layers.RandomZoom(
-            height_factor=(-0.05, -0.25),
-            width_factor=(-0.05, -0.25)),
-    tf.keras.layers.RandomRotation(0.15)
-])
+# training_image_augmentation = tf.keras.Sequential([
+#     tf.keras.layers.RandomFlip("horizontal"),
+#     tf.keras.layers.RandomZoom(
+#             height_factor=(-0.05, -0.25),
+#             width_factor=(-0.05, -0.25)),
+#     tf.keras.layers.RandomRotation(0.15)
+# ])
 
 # -----------------------------------------------------------------------------
 # AUTOMATED SETUP: DON'T TOUCH BELOW HERE UNLESS CONFIDENT
@@ -135,7 +132,7 @@ manager.plot_validation_callback_data(
 manager.plot_validation_callback_data(
     "base_loss", title="Task Base Losses Over All Epochs", ylabel="Base Loss (CategoricalCrossentropy)")
 try:
-    save_path = input("MODEL SAVE NAME: ").upper()
+    save_path = input("MODEL SAVE NAME: ")
     if save_path == "":
         save_path = "main_model"
     print(f"Saving to {MODEL_SAVE_PATH_BASE+save_path}")
