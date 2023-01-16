@@ -1,7 +1,7 @@
 # fmt: off
-from Utilities import *
+from Utilities.Utils import *
 from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
+from Utilities.SequentialLearning.Tasks.Stl10ClassificationTask import Stl10ClassificationTask as Task
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
 import os
