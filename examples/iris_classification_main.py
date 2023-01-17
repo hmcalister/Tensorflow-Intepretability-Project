@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Utilities.Utils import *
 from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from Utilities.SequentialLearning.Tasks.IrisClassificationTask import IrisClassificationTask as Task
+from Utilities.Tasks.IrisClassificationTask import IrisClassificationTask as Task
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import EWC_Method
 
 import os

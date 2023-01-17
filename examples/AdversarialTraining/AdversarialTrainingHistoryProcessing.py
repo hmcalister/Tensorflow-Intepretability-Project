@@ -13,8 +13,8 @@ adversarial_points = dataframe[dataframe["TrainType"]=="Adversarial"]
 
 plt.plot(dataframe["loss"], label="loss")
 plt.plot(dataframe["val_loss"], label="val_loss")
-plt.scatter(vanilla_points["epoch"], vanilla_points["val_loss"], marker='x', color="k", label="Vanilla Loss")
-plt.scatter(adversarial_points["epoch"], adversarial_points["val_loss"], marker='o', color="k", label="Adversarial Loss")
+plt.scatter(vanilla_points["epoch"], vanilla_points["loss"], marker='x', color="k", label="Vanilla Loss")
+plt.scatter(adversarial_points["epoch"], adversarial_points["loss"], marker='o', color="k", label="Adversarial Loss")
 plt.title("Interleaved Adversarial Training")
 plt.ylabel("Categorical Loss")
 plt.xlabel("Epochs")

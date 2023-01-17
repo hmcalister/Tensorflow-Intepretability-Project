@@ -2,7 +2,7 @@
 import numpy as np
 from Utilities.Utils import *
 from Utilities.SequentialLearning.SequentialLearningManager import SequentialLearningManager
-from Utilities.SequentialLearning.Tasks.FunctionApproximationTask import FunctionApproximationTask as Task
+from Utilities.Tasks.FunctionApproximationTask import FunctionApproximationTask as Task
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import EWC_Method
 
 import os

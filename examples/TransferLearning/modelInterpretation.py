@@ -4,7 +4,7 @@ from pathlib import Path
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 from Utilities.Interpretability.InterpretabilityMethods import *
-from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
+from Utilities.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
 # fmt: on
 
 MODEL_SAVE_PATH = "models/vanilla_intel"

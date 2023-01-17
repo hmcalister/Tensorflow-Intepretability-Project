@@ -1,7 +1,7 @@
 # fmt: off
 import pandas as pd
 from Utilities.Utils import *
-from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
+from Utilities.Tasks.CIFAR10ClassificationTask import CIFAR10ClassificationTask as Task
 from Utilities.SequentialLearning.AdversarialTraining import AdversarialExampleTrainer
 from Utilities.SequentialLearning.EWC_Methods.EWC_Methods import *
 
@@ -10,7 +10,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 # fmt: on
 
-MODEL_SAVE_PATH = "models/INTERLEAVED_ADVERSARIAL_MODEL"
+MODEL_SAVE_PATH = "models/CIFAR10_INTERLEAVED_ADVERSARIAL_MODEL"
 HISTORY_SAVE_PATH = "history.csv"
 # True for easier debugging
 # False for compiled models, faster train time
@@ -24,12 +24,10 @@ epochs = 100
 training_batches = 0
 validation_batches = 0
 batch_size = 32
-ewc_lambda = 10.0
-ewc_method = EWC_Method.FISHER_MATRIX
 
 # Labels to classify in each task
 task_labels = [
-    0,1,2,3,4,5
+    i for i in range(10)
 ]
 
 # base model for sequential tasks
@@ -43,17 +41,17 @@ model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_3")(model_layer)
 model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_4")(model_layer)
-model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_5")(model_layer)
-model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
-model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_6")(model_layer)
-model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_7")(model_layer)
-model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_8")(model_layer)
-model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
-model_layer = tf.keras.layers.BatchNormalization()(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_9")(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_10")(model_layer)
-model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_11")(model_layer)
+# model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_5")(model_layer)
+# model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
+# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+# model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_6")(model_layer)
+# model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_7")(model_layer)
+# model_layer = tf.keras.layers.Conv2D(64, (3,3), activation="relu", name="conv2d_8")(model_layer)
+# model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
+# model_layer = tf.keras.layers.BatchNormalization()(model_layer)
+# model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_9")(model_layer)
+# model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_10")(model_layer)
+# model_layer = tf.keras.layers.Conv2D(128, (3,3), activation="relu", name="conv2d_11")(model_layer)
 model_layer = tf.keras.layers.MaxPool2D((2,2))(model_layer)
 model_layer = tf.keras.layers.BatchNormalization()(model_layer)
 model_layer = tf.keras.layers.Flatten()(model_layer)
@@ -89,7 +87,7 @@ task = Task(
         batch_size=batch_size,
         training_image_augmentation = training_image_augmentation,
         run_eagerly = RUN_EAGERLY,
-        data_path="../../datasets/IntelNaturalScenes"
+        # data_path="../../datasets/IntelNaturalScenes"
     )
 
 EPSILON = 0.01

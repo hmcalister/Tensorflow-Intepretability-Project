@@ -4,7 +4,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
 from Utilities.Interpretability.InterpretabilityMethods import *
-from Utilities.SequentialLearning.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
+from Utilities.Tasks.IntelNaturalScenesClassificationTask import IntelNaturalScenesClassificationTask as Task
 # fmt: on
 
 task_labels = [0,1,2,3,4,5]
