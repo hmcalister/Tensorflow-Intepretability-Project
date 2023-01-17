@@ -370,7 +370,7 @@ def GRADCAM(
     for index, (image, _) in enumerate(zip(images, labels)):  # type: ignore
         # Output of last conv layer to be scaled by "importance" (gradient)
         output = conv_outputs[index]
-        current_grads = grads[index]
+        current_grads = grads[index] # type: ignore
         weights = tf.reduce_mean(current_grads, axis=(0,1))
         cam = np.ones(output.shape[0:2], dtype=np.float32)
         for index, w in enumerate(weights):
@@ -408,7 +408,8 @@ def GRADCAM(
 def maximal_class_activations(
     model: tf.keras.Model,
     steps = 1000,
-    step_size = 0.01
+    step_size = 0.01,
+    titles = False
     ):
     """
     Starting with a set of random inputs, compute back propagation through the network
@@ -429,6 +430,8 @@ def maximal_class_activations(
             The number of steps to take. More steps takes longer but tends to produce better results
         step_size: float
             The contribution of each step to the inputs. A smaller step size will be more stable but may take more steps
+        titles: bool
+            Flag to add titles to each image detailing expected class, predicted class, and confidence
     """
 
     # This implementation processes all classes at once
@@ -466,8 +469,10 @@ def maximal_class_activations(
     # Then we map this into a list for ease of use
     class_images = [x[i,:,:,:] for i in range(num_classes)] # type: ignore
 
-    plot_images(class_images)
     outputs=tf.nn.softmax(model(tf.convert_to_tensor(class_images)), axis=0)
     best_predictions = tf.argmax(outputs, axis=0)
-    for i, (prediction, confidence) in enumerate(zip(best_predictions, outputs)):
-        print(f"CLASS {i}:\n\tModel Prediction: {prediction}\n\tConfidence: {confidence[i]}")
+    subplot_titles = []
+    if titles:
+        for i, (prediction, confidence) in enumerate(zip(best_predictions, outputs)):
+            subplot_titles.append(f"True {i}\nPred {prediction} ({confidence[prediction]})")
+    plot_images(class_images, subplot_titles=subplot_titles)
