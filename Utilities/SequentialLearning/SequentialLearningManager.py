@@ -1,6 +1,6 @@
 # fmt: off
 
-from .Tasks.GenericTask import GenericTask
+from Utilities.Tasks.GenericTask import GenericTask
 from .EWC_Methods.EWC_Methods import *
 import numpy as np
 import matplotlib.pyplot as plt

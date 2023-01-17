@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import os
 
-from ..Tasks.GenericTask import GenericTask
+from Utilities.Tasks.GenericTask import GenericTask
 from .SignFlippingTracker import SignFlippingTracker
 from .MomentumBasedTracker import MomentumBasedTracker
 from .TotalWeightChangeTracker import TotalWeightChangeTracker

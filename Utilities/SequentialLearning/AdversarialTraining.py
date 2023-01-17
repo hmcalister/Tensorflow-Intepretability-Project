@@ -1,7 +1,7 @@
 # fmt: off
 from typing import List
 from Utilities.Utils import plot_images
-from Utilities.SequentialLearning.Tasks.GenericTask import GenericTask 
+from Utilities.Tasks.GenericTask import GenericTask 
 
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -28,8 +28,10 @@ class AdversarialExampleTrainer():
         """
         self.model = task.model
         self.loss_fn = task.model_base_loss
+        self.training_batches = task.training_batches
         self.training_dataset = task.training_dataset
         self.validation_dataset = task.validation_dataset
+        self.validation_batches = task.validation_batches
 
     def _create_adversarial_mapping(self, epsilon=0.01):
         """
@@ -68,7 +70,7 @@ class AdversarialExampleTrainer():
         
         mapping_fn = self._create_adversarial_mapping(epsilon)
         adversarial_dataset = self.training_dataset.map(mapping_fn)
-        return self.model.fit(adversarial_dataset, epochs=epochs, callbacks=callbacks)
+        return self.model.fit(adversarial_dataset, epochs=epochs, steps_per_epoch=self.training_batches, callbacks=callbacks)
 
     def display_adversarial_images(self, epsilon=0.01, num_images=16, titles=False, use_validation_dataset=False, **kwargs):
         """

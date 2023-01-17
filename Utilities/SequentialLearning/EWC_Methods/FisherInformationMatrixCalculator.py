@@ -2,7 +2,7 @@
 from copy import deepcopy
 import os
 from typing import List
-from ..Tasks.GenericTask import GenericTask
+from Utilities.Tasks.GenericTask import GenericTask
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import tensorflow as tf
